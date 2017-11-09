@@ -1,6 +1,3 @@
 # ISEF-JOCR
-Improving Optical Character Recognition (OCR) of Japanese characters through neural networks.
+Improving Optical Character Recognition (OCR) of Japanese characters through context aware machine learning.
 
-Current Model: softmax linreg
-Accuracy: 91.8%
-Runtime: 80.3s
