@@ -21,8 +21,8 @@ class jocrWindow(QWidget):
 		self.left.setMinimumHeight(300)
 		self.layout.addWidget(self.left,1,0)
 		
-		self.canvas = QLabel("canvas")
-		self.layout.addWidget(self.canvas,1,1,1,4)
+		self.canvas = canvas(self)
+		self.layout.addWidget(self.canvas,1,1)
 
 		self.right = QPushButton("->",self)
 		self.right.setMinimumHeight(300)
@@ -48,14 +48,40 @@ class jocrWindow(QWidget):
 		self.setLayout(self.layout)
 
 
-	#def reject(self):
-	#	QDialog.reject(self)
+def canvas(QWidget):				#wip
+	def __init__(self):
+		super(canvas,self).__init__()
 
+		self.setFixedSize(200,200)
 
-#def testopen(mw):
-#	self.dia = jocrWindow()	#create new window with properties from jocrWindow class
-	#dia.finished.connect(lambda: dia)	#keep the window open through black magic and my thoughts and prayers
-	#dia.show()					#show the window
+	def paintEvent(self, event):
+		painter = QPainter()
+		painter.begin(self)
+
+		self.drawPoints(painter)
+
+		painter.end()
+
+	def mousePressEvent(self, event):
+		print("pressed:", event.button())
+		self.update()
+
+	def mouseReleasedEvent(self, event):
+		print("released:", event.button())
+		self.update()
+
+	def mouseMovedEvent(self, event):
+		print(event.x(),",",event.y())
+		self.update()
+
+	def drawPoints(self, qp):
+		qp.setPen(Qt.red)
+		size = self.size()
+
+		for i in range(1000):
+			x = random.randint(1, size.width()-1)
+			y = random.randint(1, size.height()-1)
+			qp.drawPoint(x, y)     
 
 def testShow():
 	mw.dia = dia = jocrWindow()
