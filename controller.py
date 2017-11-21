@@ -20,14 +20,16 @@ testImages = np.reshape(testImages,(10000,784))
 testImages = np.expand_dims(testImages, axis=2)
 testLabels = np_utils.to_categorical(testLabels,10)
 
-def  createModel():#create the model
+def createModel():		#create the model
 	model = Sequential()
 	model.add(LSTM(200, input_shape=images.shape[1:],forget_bias_init="one",activation="tanh",inner_activation="sigmoid"))
 	model.add(Dense(10))
 	model.add(Activation("softmax"))
 	model.compile(loss="categorical_crossentropy", optimizer=RMSprop(), metrics=["accuracy"])
-	model.fit(images, labels, nb_epoch=6, batch_size=100, verbose=1, validation_data=(testImages,testLabels))
 
+
+def trainModel():
+	model.fit(images, labels, nb_epoch=6, batch_size=100, verbose=1, validation_data=(testImages,testLabels))
 	model.save("LSTMModel.h5")
 
 #createModel()
