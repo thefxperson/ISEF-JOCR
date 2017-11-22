@@ -1,6 +1,8 @@
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.ops import rnn, rnn_cell
+import matplotlib.pyplot as plt
+
 mnist = input_data.read_data_sets("/tmp/data", one_hot=True)
 
 nm_epochs = 6
@@ -13,25 +15,34 @@ hdn_units = 200
 x = tf.placeholder("float", [None, nm_chunks, chunk_size])
 y = tf.placeholder("float")
 
-def lstm(data):
-    global x
-    hidden_layer = {"weights":tf.Variable(tf.random_normal([hdn_units,nm_classes])),
-                    "biases":tf.Variable(tf.random_normal([nm_classes]))}
+def lstm(x, name="lstm"):
+    with tf.name_scope(name):
+        hidden_layer = {"weights":tf.Variable(tf.random_normal([hdn_units,nm_classes])),
+                        "biases":tf.Variable(tf.random_normal([nm_classes]))}
 
-    x = tf.transpose(x, [1,0,2])
-    x = tf.reshape(x,[-1, chunk_size])
-    x = tf.split(x, nm_chunks, 0)
+        x = tf.transpose(x, [1,0,2])
+        x = tf.reshape(x,[-1, chunk_size])
+        x = tf.split(x, nm_chunks, 0)
 
-    lstm_cell = rnn_cell.BasicLSTMCell(hdn_units,state_is_tuple=True)
-    outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+        lstm_cell = rnn_cell.BasicLSTMCell(hdn_units,state_is_tuple=True)
+        outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
 
-    output = tf.matmul(outputs[-1],hidden_layer["weights"]) + hidden_layer["biases"]
-    return output
+        output = tf.matmul(outputs[-1],hidden_layer["weights"]) + hidden_layer["biases"]
+        
+        tf.summary.histogram("weights", hidden_layer["weights"])
+        tf.summary.histogram("biases", hidden_layer["biases"])
+
+        return output
+
+
 
 def train_NN(x):
-    prediction = lstm(x)
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction,labels=y))
-    optimizer = tf.train.AdamOptimizer().minimize(cost)
+    with tf.name_scope("train"):
+        prediction = lstm(x)
+        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction,labels=y))
+        optimizer = tf.train.AdamOptimizer().minimize(cost)
+
+    saver = tf.train.Saver()
 
     with tf.Session() as sess:
         sess.run(tf.initialize_all_variables())
@@ -48,10 +59,14 @@ def train_NN(x):
 
             print("Epoch ", epoch+1, " completed out of ", nm_epochs, " loss: ", epoch_loss)
 
-        correct = tf.equal(tf.argmax(prediction,1),tf.argmax(y,1))
-        accuracy = tf.reduce_mean(tf.cast(correct, "float"))
+        with tf.name_scope("accuracy"):
+            correct = tf.equal(tf.argmax(prediction,1),tf.argmax(y,1))
+            accuracy = tf.reduce_mean(tf.cast(correct, "float"))
         print("accuracy: ", accuracy.eval({x:mnist.test.images.reshape((-1,nm_chunks,chunk_size)),y:mnist.test.labels}))
-        saver = tf.train.Saver()
-        saver.save(sess, "./lstmSave.ckpt")
+        saver.save(sess, "/save/lstmSave.ckpt")
 
-train_NN(x)
+#train_NN(x)
+lstm(x)
+with tf.Session() as sess:
+    saver = tf.train.Saver()
+    saver.restore(sess, "./lstmSave.ckpt")
