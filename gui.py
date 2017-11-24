@@ -15,14 +15,18 @@ class jocrWindow(QWidget):
 		self.top3 = QLabel("top 3: A B C")
 		self.layout.addWidget(self.top3,0,1,1,4)
 
+		self.clear = QPushButton("Clear",self)
+		self.layout.addWidget(self.clear,0,5)
+
 		#-------------------------------------
 
 		self.left = QPushButton("<-",self)
 		self.left.setMinimumHeight(300)
 		self.layout.addWidget(self.left,1,0)
 		
-		self.canvas = canvas(self)
-		self.layout.addWidget(self.canvas,1,1)
+		self.canvas = MyCanvas()
+		self.layout.addWidget(self.canvas,1,1,1,4)
+		self.canvas.selection_shape = "rect"
 
 		self.right = QPushButton("->",self)
 		self.right.setMinimumHeight(300)
@@ -42,46 +46,68 @@ class jocrWindow(QWidget):
 		self.blue = QPushButton("3d",self)
 		self.layout.addWidget(self.blue,2,4)
 
+		#-------------------------------------
+		self.clear.clicked.connect(self.canvas.clearCanvas)
 
 		self.layout.setRowStretch(1,1)
 
 		self.setLayout(self.layout)
 
-
-def canvas(QWidget):				#wip
+class MyCanvas(QWidget):
+	
 	def __init__(self):
-		super(canvas,self).__init__()
+		super(MyCanvas, self).__init__()
 
-		self.setFixedSize(200,200)
+		self.setFixedSize(315, 315)
 
+		self.selection_shape = 'rect'
+
+		self.selection = False
+
+		self.shapes = []
+		
 	def paintEvent(self, event):
-		painter = QPainter()
-		painter.begin(self)
 
-		self.drawPoints(painter)
+		self.qp = QPainter()
 
-		painter.end()
+		pen = QPen()
+		pen.setColor(QColor(0,255,0))
+		pen.setWidth(5)
+		self.qp.setPen(pen)
+
+		self.qp.begin(self)
+
+		self.qp.fillRect(event.rect(), QBrush(QColor(255,255,255)))
+
+		for name, args in self.shapes:
+			self.drawRect(event, self.qp, args)
+				
+		self.qp.end()
+		
+	def drawRect(self, event, qp, args):
+		qp.drawRect(args['x'], args['y'], args['width'], args['height'])
 
 	def mousePressEvent(self, event):
-		print("pressed:", event.button())
+		if event.button() == 1:
+			self.selection = True
+			self.shapes.append(('rect', {'x':event.x(), 'y':event.y(), 'width':1, 'height':1}))
+			
+	def mouseReleaseEvent(self, event):
+		if event.button() == 1 and self.selection:
+			self.selection = False
+			self.shapes.append(('rect', {'x':event.x(), 'y':event.y(), 'width':1, 'height':1}))
+			
 		self.update()
 
-	def mouseReleasedEvent(self, event):
-		print("released:", event.button())
+
+	def mouseMoveEvent(self, event):
+		if self.selection:
+			self.shapes.append(('rect', {'x':event.x(), 'y':event.y(), 'width':1, 'height':1}))
 		self.update()
 
-	def mouseMovedEvent(self, event):
-		print(event.x(),",",event.y())
+	def clearCanvas(self):
+		del self.shapes[:]
 		self.update()
-
-	def drawPoints(self, qp):
-		qp.setPen(Qt.red)
-		size = self.size()
-
-		for i in range(1000):
-			x = random.randint(1, size.width()-1)
-			y = random.randint(1, size.height()-1)
-			qp.drawPoint(x, y)     
 
 def testShow():
 	mw.dia = dia = jocrWindow()
@@ -89,7 +115,7 @@ def testShow():
 	return 0
 
 #new item called test
-action = QAction("test",mw)
+action = QAction("JOCR",mw)
 #when activated run testopen
 action.triggered.connect(lambda: testShow())
 #add test to the Tools menu in Anki
