@@ -1,6 +1,7 @@
 from aqt import mw
 from aqt.utils import showInfo
 from aqt.qt import *
+import csv
 
 class jocrWindow(QWidget):
 	def __init__(self):
@@ -34,6 +35,9 @@ class jocrWindow(QWidget):
 
 		#--------------------------------------
 
+		self.strokes = QLabel(str(self.canvas.stroke))
+		self.layout.addWidget(self.strokes,2,0)
+
 		self.override = QLabel("Override:")
 		self.layout.addWidget(self.override,2,1)
 
@@ -46,8 +50,12 @@ class jocrWindow(QWidget):
 		self.blue = QPushButton("3d",self)
 		self.layout.addWidget(self.blue,2,4)
 
+		self.undo = QPushButton("Undo", self)
+		self.layout.addWidget(self.undo,2,5)
+
 		#-------------------------------------
 		self.clear.clicked.connect(self.canvas.clearCanvas)
+		self.undo.clicked.connect(self.canvas.undoStroke)
 
 		self.layout.setRowStretch(1,1)
 
@@ -65,6 +73,8 @@ class MyCanvas(QWidget):
 		self.selection = False
 
 		self.shapes = []
+
+		self.stroke = 0
 		
 	def paintEvent(self, event):
 
@@ -79,34 +89,50 @@ class MyCanvas(QWidget):
 
 		self.qp.fillRect(event.rect(), QBrush(QColor(255,255,255)))
 
-		for name, args in self.shapes:
-			self.drawRect(event, self.qp, args)
+		for i,j in self.shapes:
+			self.drawRect(event, self.qp, j)
 				
 		self.qp.end()
 		
 	def drawRect(self, event, qp, args):
-		qp.drawRect(args['x'], args['y'], args['width'], args['height'])
+		qp.drawRect(args["x"], args["y"], 1, 1)
 
 	def mousePressEvent(self, event):
 		if event.button() == 1:
+			self.stroke += 1
 			self.selection = True
-			self.shapes.append(('rect', {'x':event.x(), 'y':event.y(), 'width':1, 'height':1}))
+			self.shapes.append((self.stroke,{"type":"point","x":event.x(),"y":event.y()}))
+		self.update()
 			
 	def mouseReleaseEvent(self, event):
 		if event.button() == 1 and self.selection:
 			self.selection = False
-			self.shapes.append(('rect', {'x':event.x(), 'y':event.y(), 'width':1, 'height':1}))
+			self.shapes.append((self.stroke,{"type":"point","x":event.x(),"y":event.y()}))
 			
 		self.update()
 
 
 	def mouseMoveEvent(self, event):
 		if self.selection:
-			self.shapes.append(('rect', {'x':event.x(), 'y':event.y(), 'width':1, 'height':1}))
+			self.shapes.append((self.stroke,{"type":"point","x":event.x(),"y":event.y()}))
 		self.update()
 
 	def clearCanvas(self):
 		del self.shapes[:]
+		self.stroke = 0
+		self.update()
+
+	def undoStroke(self):
+		i, j = enumerate(self.shapes)
+		isLeft = False
+		while isLeft == False:
+			for k in len(i):
+				if j[0] == self.stroke:
+					del self.shapes[i]
+			isLeft = True
+			for k in len(i):
+				if j[0] == self.stroke:
+					isLeft = False
 		self.update()
 
 def testShow():
