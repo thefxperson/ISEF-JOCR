@@ -1,13 +1,11 @@
 import os
 
 #Uncomment following area to extract images from training set
-'''
-alphabets = os.listdir("images_background/")
-alphabets = alphabets[1:]
 
+alphabets = os.listdir("images_background/")
+'''
 for i in range(len(alphabets)):
 	chars = os.listdir("images_background/" + alphabets[i] + "/")
-	chars = chars[1:]
 	for j in range(len(chars)):
 		imgs = os.listdir("images_background/" + alphabets[i] + "/" + chars[j] + "/")
 		for k in range(len(imgs)):
@@ -16,13 +14,11 @@ for i in range(len(alphabets)):
 '''
 
 #Uncomment following area to extract images from testing set
-'''
-alphabets = os.listdir("images_evaluation/")
-alphabets = alphabets[1:]
 
+alphabets = os.listdir("images_evaluation/")
+'''
 for i in range(len(alphabets)):
 	chars = os.listdir("images_evaluation/" + alphabets[i] + "/")
-	chars = chars[1:]
 	for j in range(len(chars)):
 		imgs = os.listdir("images_evaluation/" + alphabets[i] + "/" + chars[j] + "/")
 		for k in range(len(imgs)):
