@@ -1,51 +1,86 @@
 import numpy as np
-from PIL import image
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
 import random
+from datetime import datetime
 
 class imageManager():
 	def __init__(self):
-		self.numClasses = 1623
+		random.seed(datetime.now())
 
-	def importImgs(self,classID,numImages=1,imgSize=105):
-		if classID < 1000:
+	def importImgs(self,classID,imgSize=105):
+		#determine if testing image or training image
+		if classID <= 964:
+			imgPath = "images_background"
+		else:
+			imgPath = "images_evaluation"
+
+		#prepare ID for use in path, convert to string
+		if classID < 10:
+			classID = "000" + str(classID)
+		elif classID < 100:
+			classID = "00" + str(classID)
+		elif classID < 1000:
 			classID = "0" + str(classID)
 		else:
 			classID = str(classID)
 
-		imgArray = np.zeros(numImages,imgSize,imgSize)
+		#create array to hold image(s)
+		imgArray = np.zeros((imgSize,imgSize))
 
-		for i in range(numImages):
-			if i+1 < 10:
-				loc = classID + "_0" + str(i+1) + ".png"
-			else:
-				loc = loc = classID + "_" + str(i+1) + ".png"
-			img = imread("Omniglot_data/images_background/" + loc)
-			print(img)
-			imgArray[i] = imread("Omniglot_data/images_background/" + loc)
-			print(imgArray)
+		#load image
+		i = random.randint(1,20)
+
+		if i < 10:
+			loc = classID + "_0" + str(i) + ".png"
+		else:
+			loc = loc = classID + "_" + str(i) + ".png"
+		imgArray = self.cleanData(mpimg.imread("Omniglot_data/" + imgPath + "/" + loc))
+
+		return imgArray
 			
 
-	def getEpisode(classes, numClasses, imgSize=105):
-		classNums = np.zeros(numClasses)
-		for i in range(numClasses):	#choose 15 classes to use
-			classNums[i] = random.randint(0,classes.shape[0])
+	def cleanData(self, images):	#flips 0s and 1s. this way 1 = black and 0 = white
+		for i in range(images.shape[0]):
+			for j in range(images.shape[1]):
+					if images[i][j] == 1:
+						images[i][j] = 0
+					else:
+						images[i][j] = 1
+		return images
+			
 
-			for j in range(15):	#check for dupe classes
-				if classNums[i] == classNums[j] and i != j:
-					classNums[i] = random.randint(0,classes.shape[0])
+	def getEpisode(self, numClasses, imgSize=105, train=True):
+		#prep for test or train episode
+		if train:
+			lower = 0
+			upper = 964
+		else:
+			lower = 965
+			upper = 1623
 
-			classDict = {i:classNums[i]}	#dict of incremental numbers to class num. ie 1 - 200, 2 - 659, 3 - 914, 4 - 142 ect
+		classList = random.sample(range(lower,upper+1),numClasses)	#generate random classes totalling to numClasses
 
 		#arrays of images and labels for the episode
 		episodeImgs = np.zeros((10*numClasses,imgSize,imgSize))
 		episodeLabels = np.zeros(10*numClasses)
 
 		for i in range(10*numClasses):
-			chooseClass = random.randint(0,numClasses)	#choose which class, returns var from 0-numClasses
-			episodeImgs[i] = classes[classDict[chooseClass]][random.randint(0,20)]	#gets a random image from chosen class, using classDict
-			episodeLabels[i] = alphaHot(chooseClass)	#encodes the label as alphaHot type
+			chooseClass = random.randint(0,numClasses-1)	#choose which class, returns var from 0-numClasses
+			episodeImgs[i] = self.importImgs(classList[chooseClass])	#gets a random image from chosen class, using classDict
+			'''episodeLabels[i] = alphaHot(chooseClass)	'''#encodes the label as alphaHot type
+			episodeLabels[i] = classList[chooseClass]
 
 		return episodeImgs, episodeLabels				#returns images and labelss
 
-img = imageManager()
-img.importImgs(492)
+
+	#need x unique labels, where each label has 5 unqiue vals
+	def alphaHot(self, classList):	#encodes label with alphahot
+		order = random.sample(range(0,5),5)
+		hot = ""
+		for j in range(numClasses):				#convert to string (97 is lowercase a)
+			hot += chr(97+order[j])
+		print(hot)
+
+imgM = imageManager()
+#imgs, labels = imgM.getEpisode(5)
