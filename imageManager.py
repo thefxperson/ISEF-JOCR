@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 import matplotlib.image as mpimg
 import random
 from datetime import datetime
@@ -62,7 +63,7 @@ class imageManager():
 		classList = random.sample(range(lower,upper+1),numClasses)	#generate random classes totalling to numClasses
 
 		#arrays of images and labels for the episode
-		episodeImgs = np.zeros((10*numClasses,imgSize,imgSize))		#array of zeros to hold images
+		episodeImgs = np.zeros((10*numClasses,20,20))		#array of zeros to hold images
 		episodeLabels = np.empty(10*numClasses,dtype=object)		#empty array to hold labels
 		alpha = self.alphaHot(numClasses)							#generate the random alphahot labels to use for this ep
 
@@ -93,6 +94,12 @@ class imageManager():
 			remainder.append(number % 5)	#mod func returns remainder
 			number = int(number / 5)
 		return remainder[::-1]			#reverse nums
+
+	def adjustImg(self, image):
+		image = sp.ndimage.interpolation.rotate(image, (random.random()-.5)*20)		#rotate image between -10 and 10 degrees. (random returns between 0,1)
+		image = sp.ndimage.interpolation.shift(image, random.randint(-10,10))		#shift image between -10 and 10 pixels
+		return sp.misc.imresize(image, (20,20))
+
 
 foo = imageManager()
 foo.getEpisode(2)
