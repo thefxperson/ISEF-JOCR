@@ -1,11 +1,12 @@
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from tensorflow.python.ops import rnn, rnn_cell
+import imageManager
 
 mnist = input_data.read_data_sets("/tmp/data", one_hot=True)
 
-nm_epochs = 6		#number of epochs
-nm_classes = 10		#number of classes to classify
+nm_episodes = 100000		#number of episodes
+nm_classes = 30		#number of outputs
 batch_size = 100	#number of images per batch
 chunk_size = 28		#image x size
 nm_chunks = 28		#image y size
@@ -14,6 +15,8 @@ hdn_units = 200		#number of hidden units
 #placeholder variables for images and labels
 x = tf.placeholder("float", [None, nm_chunks, chunk_size])
 y = tf.placeholder("float")
+
+manager = imageManager.imageManager()
 
 #lstm layer of network
 def lstm(x, name="lstm"):
@@ -47,7 +50,7 @@ def train_NN(x):
     with tf.name_scope("train"):
         prediction = lstm(x)	#get output from lstm
         cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction,labels=y))	#calculate loss
-        optimizer = tf.train.AdamOptimizer().minimize(cost)										#minimize loss with Adam
+        optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9).minimize(cost)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
 
         tf.summary.scalar("cost", cost)
 
@@ -60,17 +63,16 @@ def train_NN(x):
         global summary_val
 
         #run through all epochs
-        for epoch in range(nm_epochs):
-            epoch_loss = 0	#loss in current epoch
-            for i in range(int(mnist.train.num_examples/batch_size)):		#for each batch in the data
-                epoch_x, epoch_y = mnist.train.next_batch(batch_size)		#train the machine (forward prop?)
-                epoch_x = epoch_x.reshape((batch_size,nm_chunks,chunk_size))		#reshape results
+        for episode in range(nm_episodes):
+            episode_loss = 0	#loss in current episode
+            episode_x, episode_y =  manager.getEpisode(5+int((episode*10)/nm_episodes))		#pull episode info: images and alphahot labels
+            episode_x = episode_x.reshape((batch_size,nm_chunks,chunk_size))		#reshape results
 
-                i, c, summary_val = sess.run([optimizer, cost, merged], feed_dict={x:epoch_x,y:epoch_y})	#backpropigate using optimizer, update weights,ect
+            i, c, summary_val = sess.run([optimizer, cost, merged], feed_dict={x:episode_x,y:episode_y})	#backpropigate using optimizer, update weights,ect
 
-                epoch_loss += c 		#cost for epoch
+            episode_loss += c 		#cost for epoch
 
-            print("Epoch ", epoch+1, " completed out of ", nm_epochs, " loss: ", epoch_loss)
+            print("Episode ", episode+1, " completed out of ", nm_episodes, " loss: ", episode_loss)
 
         #test the accuracy
         with tf.name_scope("accuracy"):
@@ -84,7 +86,29 @@ def train_NN(x):
         writer.add_summary(summary_val)
         writer.add_graph(sess.graph)
 
-train_NN(x)
+def getLoss(prediction, labels):            #predictions[30], labels[6]
+    #convert from alpha to one hot
+    for j in range(len(labels)):         #converts to labels[6][5]
+        if labels[i][j] == "a":
+            one[i][j] = [1,0,0,0,0]
+        elif labels[i][j] == "b":
+            one[i][j] = [0,1,0,0,0]
+        elif labels[i][j] == "c":
+            one[i][j] = [0,0,1,0,0]
+        elif labels[i][j] == "d":
+            one[i][j] = [0,0,0,1,0]
+        elif labels[i][j] == "e":
+            one[i][j] = [0,0,0,0,1]
+    one = one.reshape(one, 30)
+    #get loss
+    diff = one - prediction
+    loss = -1*np.log10(diff)        #log0 = Nan
+    loss[np.isnan(loss)] = 0        #replace Nan with 0
+    return np.sum(loss)
+
+#train_NN(x)
+print(int(mnist.train.num_examples/batch_size))
+
 '''lstm(x)	#create variables before loading
 with tf.Session() as sess:
     saver = tf.train.Saver()	#load learned weights+biases
