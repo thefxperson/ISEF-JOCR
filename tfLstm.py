@@ -116,7 +116,7 @@ with tf.Session() as sess:
 
 #based on code from hmishra2250, used under MIT License. github: https://github.com/hmishra2250/NTM-One-Shot-TF
 
-def MANN(input, target, batch_size=16, num_classes=5, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4):
+def MANN(input_var, target, batch_size=16, num_classes=5, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4):
     #input dims (batch_size, time, input_dim)
     #target dims (batch_size, time)(label_indicies)
 
@@ -231,3 +231,19 @@ def MANN(input, target, batch_size=16, num_classes=5, memory_shape=(128,40), con
     output_shape = (batch_size*sequence_length, num_classes)
 
     #input concat with time offset
+    flattened_onehot_target = tf.one_hot(tf.reshape(target, [-1]), depth=num_classes)
+    onehot_target = tf.reshape(flattened_onehot_target, (batch_size, sequence_length, num_classes))
+    offset_target = tf.concat([tf.zeros_like(tf.expand_dims(onehot_target[:,0],1)), onehot_target[:,:-1]], axis=1)
+    list_input = tf.concat([input_var, offset_target], axis=2)
+
+    list_ntm = tf.scan(step, elems=tf.transpose(list_input, perm=[1,0,2]), initializer=[memory, cell_state, hidden_state, read_vector, read_weight_vector, usage_weights], name="Scan_MANN_last")
+    list_ntm_output = tf.transpose(tf.concat(list_ntm[2:4], axis=2), perm=[1,0,2])
+
+    list_input_weight_output = tf.matmul(tf.reshape(list_ntm_output, shape=(batch_size * sequence_length, -1)), weight_output)
+    output_preactivation = tf.add(tf.reshape(list_input_weight_output, shape=(batch_size, sequence_length, num_classes)), bias_output)
+    output_flatten = tf.nn.softmax(tf.reshape(output_preactivation, output_shape))
+    output = tf.reshape(output_flatten, output_preactivation.get_shape().as_list())
+
+    params = [weight_key, bias_key, weight_add, bias_add, weight_sigma, bias_sigma, weight_inputhidden, weight_readhidden, weight_hiddenhidden, bias_inputhidden, weight_output, bias_output]
+
+    return output, output_flatten, params
