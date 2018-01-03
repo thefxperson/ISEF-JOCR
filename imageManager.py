@@ -53,7 +53,7 @@ class imageManager():
 		random.seed(datetime.now())				#seed based on current time... ensures that each episode is random
 		#prep for test or train episode
 		if train:				#training class range...see Omniglot_data/README.md
-			lower = 0
+			lower = 1
 			upper = 964
 		else:					#testing class range
 			lower = 965
