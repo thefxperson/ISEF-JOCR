@@ -63,19 +63,18 @@ class imageManager():
 
 		#arrays of images and labels for the episode
 		episodeImgs = np.zeros((10*numClasses,20,20))		#array of zeros to hold images
-		episodeLabels = np.empty(10*numClasses,dtype=object)		#empty array to hold labels
-		alpha = self.alphaHot(numClasses)							#generate the random alphahot labels to use for this ep
+		#episodeLabels = np.empty(10*numClasses,dtype=object)		#empty array to hold labels
+		#alpha = self.alphaHot(numClasses)							#generate the random alphahot labels to use for this ep
 		rotation = [random.randint(0,3) for i in range(numClasses)]	#rotates each class randomly by 90deg.
-		imgNums = random.sample(range(20),10)						#generates 10 unique numbers for the image so the same image isn't used twice
+		imgNums = [random.randint(1,20) for i in range(10*numClasses)]#temprandom.sample(range(20),10)						#generates 10 unique numbers for the image so the same image isn't used twice
 
-		chooseClass = [random.randint(0,numClasses-1) for i in range(10*numClasses)]	#choose classes randomly
-
+		chooseClass = [random.randint(1,numClasses-1) for i in range(10*numClasses)]	#choose classes randomly
 		for i in range(10*numClasses):
 			episodeImgs[i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[i]],imgNums[i]), rotation[chooseClass[i]]*90))		#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
 																																					#Then randomly shifts and rotates by +-10px/+-10deg, and downscale to 20x20
-			episodeLabels[i] = alpha[chooseClass[i]]				#encodes label with alpha hot
+			#episodeLabels[i] = alpha[chooseClass[i]]				#encodes label with alpha hot
 
-		return episodeImgs, episodeLabels				#returns images and labelss
+		return episodeImgs#, episodeLabels				#returns images and labelss
 
 	#generate unique labels for given number of classes in alphahot encoding
 	def alphaHot(self, numClasses):
@@ -101,32 +100,28 @@ class imageManager():
 		image = sp.interpolation.shift(image, random.randint(-10,10))		#shift image between -10 and 10 pixels
 		return spmc.imresize(image, (20,20))
 
-def getLoss(prediction, labels):            #predictions[30], labels[6]
-    #convert from alpha to one hot
-    one = [[None]*5 for _ in range(6)] 
-    labels = list(labels[0])
-    print(len(labels))
-    for i in range(len(labels)):         #converts to labels[6][5]
-        if labels[i] == "a":
-            one[i] = [1,0,0,0,0]
-        elif labels[i] == "b":
-            one[i] = [0,1,0,0,0]
-        elif labels[i] == "c":
-            one[i] = [0,0,1,0,0]
-        elif labels[i] == "d":
-            one[i] = [0,0,0,1,0]
-        elif labels[i] == "e":
-            one[i] = [0,0,0,0,1]
-    one = np.reshape(one, 30)
-    #get loss
-    diff = one - prediction
-    diff = np.absolute(diff)
-    print(diff)
-    loss = -1*np.log10(diff)        #log0 = inf
-    print(loss)
-    loss[np.isinf(loss)] = 0        #replace inf with 0
-    return np.sum(loss)
-
-a = np.array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0])
-b = ["abaaaa"]
-print(getLoss(a,b))
+	def getLoss(prediction, labels):            #predictions[30], labels[6]
+		#convert from alpha to one hot
+		one = [[None]*5 for _ in range(6)] 
+		labels = list(labels[0])
+		print(len(labels))
+		for i in range(len(labels)):         #converts to labels[6][5]
+			if labels[i] == "a":
+				one[i] = [1,0,0,0,0]
+			elif labels[i] == "b":
+				one[i] = [0,1,0,0,0]
+			elif labels[i] == "c":
+				one[i] = [0,0,1,0,0]
+			elif labels[i] == "d":
+				one[i] = [0,0,0,1,0]
+			elif labels[i] == "e":
+				one[i] = [0,0,0,0,1]
+		one = np.reshape(one, 30)
+		#get loss
+		diff = one - prediction
+		diff = np.absolute(diff)
+		print(diff)
+		loss = -1*np.log10(diff)        #log0 = inf
+		print(loss)
+		loss[np.isinf(loss)] = 0        #replace inf with 0
+		return np.sum(loss)
