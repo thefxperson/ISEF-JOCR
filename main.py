@@ -14,42 +14,46 @@ import omniGenerator
 def main():
 	sess = tf.InteractiveSession()	#create tf session
 
-	#create placeholders
-	input_ph = tf.placeholder(dtype=tf.float32, shape=(16, 50, 400))	#batch_size, time, input dims (20x20 flattened)
-	target_ph = tf.placeholder(dtype=tf.int32, shape=(16, 50))			#batch_size, time
-
 	#variables/hyperparamaters
 	num_reads = 4
 	controller_size = 200
 	memory_shape = (128, 40)
+	num_outputs = 30					#uses five-hot encoding, thus fixed output
 	num_classes = 5
 	input_size = 20*20
-	batch_size = 16
+	batch_size = 16						#microbatches of 16
+	num_episodes = 100000
 	num_samples_per_class = 10
 
-	generator = omniGenerator.OmniglotGenerator(data_folder="./data/omniglot", batch_size=batch_size, num_samples=num_classes, num_samples_per_class=num_samples_per_class)
-	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_classes=num_classes, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads)
+	#create placeholders
+	input_ph = tf.placeholder(dtype=tf.float32, shape=(16, num_samples_per_class, num_outputs, 400))	#batch_size, time(output*num_samples), input dims (20x20 flattened)
+	target_ph = tf.placeholder(dtype=tf.int32, shape=(batch_size, num_samples_per_class, num_outputs))			#old: batch_size, time(output*num_samples)
+
+	generator = omniGenerator.OmniglotGenerator(data_folder="./data/omniglot", batch_size=batch_size, num_samples=num_outputs, num_samples_per_class=num_samples_per_class, max_iter=num_episodes, num_classes=num_classes)
+	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_outputs=num_outputs, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads, num_samples_per_class=num_samples_per_class)
 
 	with tf.variable_scope("weights", reuse=True):
 			weight_key = tf.get_variable("weight_key", shape=(num_reads, controller_size, memory_shape[1]))
 			bias_key = tf.get_variable("bias_key", shape=(num_reads, memory_shape[1]))
-			weight_add = tf.get_variable("weight_add", shape=(num_reads, controller_size, memory_shape[1]))
-			bias_add = tf.get_variable("bias_add", shape=(num_reads, memory_shape[1]))
+			weight_alpha = tf.get_variable("weight_alpha", shape=(num_reads, controller_size, memory_shape[1]))
+			bias_alpha = tf.get_variable("bias_alpha", shape=(num_reads, memory_shape[1]))
 			weight_sigma = tf.get_variable("weight_sigma", shape=(num_reads, controller_size, 1))
 			bias_sigma = tf.get_variable("bias_sigma", shape=(num_reads, 1))
-			weight_inputhidden = tf.get_variable("weight_inputhidden", shape=(input_size + num_classes, 4 * controller_size))
+			weight_inputhidden = tf.get_variable("weight_inputhidden", shape=(input_size + num_outputs, 4 * controller_size))
 			bias_inputhidden = tf.get_variable("bias_inputhidden", shape=(4 * controller_size))
-			weight_output = tf.get_variable("weight_output", shape=(controller_size + num_reads * memory_shape[1], num_classes))
-			bias_output = tf.get_variable("bias_output", shape=(num_classes))
+			weight_output = tf.get_variable("weight_output", shape=(controller_size + num_reads * memory_shape[1], num_outputs))
+			bias_output = tf.get_variable("bias_output", shape=(num_outputs))
 			weight_readhidden = tf.get_variable("weight_readhidden", shape=(num_reads * memory_shape[1], 4 * controller_size))
 			weight_hiddenhidden = tf.get_variable("weight_hiddenhidden", shape=(controller_size, 4 * controller_size))
 			gamma = tf.get_variable("gamma", shape=[1], initializer=tf.constant_initializer(0.95))
 
-	params = [weight_key, bias_key, weight_add, bias_add, weight_sigma, bias_sigma, weight_inputhidden, weight_readhidden, weight_hiddenhidden, bias_inputhidden, weight_output, bias_output]
+	params = [weight_key, bias_key, weight_alpha, bias_alpha, weight_sigma, bias_sigma, weight_inputhidden, weight_readhidden, weight_hiddenhidden, bias_inputhidden, weight_output, bias_output]
 
 	output_target_ph = tf.one_hot(target_ph, depth=generator.num_samples)
 	print("Output, target shapes: ", output.get_shape().as_list(), output_target_ph.get_shape().as_list())
-	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=output_target_ph), name="cost")
+	#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=output_target_ph), name="cost")
+	foo = 1e-8
+	cost = tf.reduce_mean(tf.reduce_sum(tf.stack(tf.split(output_target_ph, 5, axis=2), axis=2) * tf.log(output + foo), axis=[1,2,3]))
 	optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
 	train_step = optimizer.minimize(cost, var_list=params)
 
@@ -75,6 +79,7 @@ def main():
 
 	try:
 		for i, (batch_input, batch_output) in generator:
+			classes = 5 + int(i/10000)
 			feed_dict = {
 				input_ph: batch_input,
 				target_ph: batch_output
@@ -89,10 +94,10 @@ def main():
 			all_scores.append(score)
 			scores.append(score)
 			accs += acc
-			if i>=0:
+			'''if i>=0:
 				print(accs / 100.0)
 				print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
-				scores, accs = [], np.zeros(generator.num_samples_per_class)
+				scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	except KeyboardInterrupt:
 		saver.save(sess, "/save/lstmSave.ckpt")		#save learned weights and biases

@@ -49,7 +49,7 @@ class imageManager():
 		return images
 			
 
-	def getEpisode(self, numClasses, imgSize=105, train=True):
+	def getEpisode(self, numClasses, numSamples=10, imgSize=105, train=True):
 		random.seed(datetime.now())				#seed based on current time... ensures that each episode is random
 		#prep for test or train episode
 		if train:				#training class range...see Omniglot_data/README.md
@@ -62,13 +62,13 @@ class imageManager():
 		classList = random.sample(range(lower,upper+1),numClasses)	#generate random classes totalling to numClasses
 
 		#arrays of images and labels for the episode
-		episodeImgs = np.zeros((10*numClasses,20,20))		#array of zeros to hold images
-		#episodeLabels = np.empty(10*numClasses,dtype=object)		#empty array to hold labels
+		episodeImgs = np.zeros((numSamples*numClasses,20,20))		#array of zeros to hold images
+		#episodeLabels = np.empty(numSamples*numClasses,dtype=object)		#empty array to hold labels
 		#alpha = self.alphaHot(numClasses)							#generate the random alphahot labels to use for this ep
 		rotation = [random.randint(0,3) for i in range(numClasses)]	#rotates each class randomly by 90deg.
-		imgNums = [random.randint(1,20) for i in range(10*numClasses)]#temprandom.sample(range(20),10)						#generates 10 unique numbers for the image so the same image isn't used twice
+		imgNums = [random.randint(1,20) for i in range(numSamples*numClasses)]#temprandom.sample(range(20),numSamples)						#generates numSamples unique numbers for the image so the same image isn't used twice
 
-		chooseClass = [random.randint(1,numClasses-1) for i in range(10*numClasses)]	#choose classes randomly
+		chooseClass = [random.randint(1,numClasses-1) for i in range(numSamples*numClasses)]	#choose classes randomly
 		for i in range(10*numClasses):
 			episodeImgs[i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[i]],imgNums[i]), rotation[chooseClass[i]]*90))		#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
 																																					#Then randomly shifts and rotates by +-10px/+-10deg, and downscale to 20x20

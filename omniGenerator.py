@@ -17,13 +17,11 @@ import random
 
 class OmniglotGenerator(object):
 	"""Docstring for OmniglotGenerator"""
-	def __init__(self, data_folder, batch_size=1, num_samples=5, num_samples_per_class=10, max_rotation=-np.pi/6, max_shift=10, img_size=(20,20), max_iter=None):
+	def __init__(self, data_folder, batch_size=1, num_samples=30, num_samples_per_class=10, max_rotation=-np.pi/6, max_shift=10, img_size=(20,20), max_iter=None, num_classes=5):
 		super(OmniglotGenerator, self).__init__()
 		self.data_folder = data_folder
 		self.batch_size = batch_size
-		self.nb_samples = num_samples						#these are duplicate variables but i don't wanna debug rn
 		self.num_samples = num_samples
-		self.nb_samples_per_class = num_samples_per_class
 		self.num_samples_per_class = num_samples_per_class
 		self.max_rotation = max_rotation
 		self.max_shift = max_shift
@@ -32,6 +30,7 @@ class OmniglotGenerator(object):
 		self.num_iter = 0
 		self.character_folders = [os.path.join(self.data_folder, family, character) for family in os.listdir(self.data_folder) if os.path.isdir(os.path.join(self.data_folder, family)) for character in os.listdir(os.path.join(self.data_folder, family))]
 		self.img = imageManager.imageManager()
+		self.num_classes = num_classes
 
 	def __iter__(self):
 		return self
@@ -42,21 +41,21 @@ class OmniglotGenerator(object):
 	def next(self):
 		if (self.max_iter is None) or (self.num_iter < self.max_iter):
 			self.num_iter += 1
-			return (self.num_iter - 1), self.sample(self.nb_samples)
+			return (self.num_iter - 1), self.sample(self.num_samples)
 		else:
 			raise StopIteration
 
-	def sample(self, nb_samples):
-		sampled_character_folders = random.sample(self.character_folders, nb_samples)
+	def sample(self, num_samples):
+		sampled_character_folders = random.sample(self.character_folders, num_samples)
 		random.shuffle(sampled_character_folders)
 
-		images = self.img.getEpisode(self.num_samples)
+		images = self.img.getEpisode(self.num_classes, self.num_samples_per_class)
 
-		example_inputs = np.zeros((self.batch_size, nb_samples * self.nb_samples_per_class, np.prod(self.img_size)), dtype=np.float32)
-		example_outputs = np.zeros((self.batch_size, nb_samples * self.nb_samples_per_class), dtype=np.float32)     #notice hardcoded np.float32 here and above, change it to something else in tf
+		example_inputs = np.zeros((self.batch_size, num_samples * self.num_samples_per_class, np.prod(self.img_size)), dtype=np.float32)
+		example_outputs = np.zeros((self.batch_size, num_samples * self.num_samples_per_class), dtype=np.float32)     #notice hardcoded np.float32 here and above, change it to something else in tf
 
 		for i in range(self.batch_size):
-			labels_and_images = self.get_shuffled_images(sampled_character_folders, range(nb_samples), nb_samples=self.nb_samples_per_class)
+			labels_and_images = self.get_shuffled_images(sampled_character_folders, range(num_samples), num_samples=self.num_samples_per_class)
 			sequence_length = len(labels_and_images)
 			labels, image_files = zip(*labels_and_images)
 
@@ -69,9 +68,9 @@ class OmniglotGenerator(object):
 
 		return example_inputs, example_outputs
 
-	def get_shuffled_images(self, paths, labels, nb_samples=None):
-		if nb_samples is not None:
-			sampler = lambda x: random.sample(x, nb_samples)
+	def get_shuffled_images(self, paths, labels, num_samples=None):
+		if num_samples is not None:
+			sampler = lambda x: random.sample(x, num_samples)
 		else:
 			sampler = lambda x:x
 
