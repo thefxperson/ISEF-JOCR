@@ -28,7 +28,7 @@ class OmniglotGenerator(object):
 		self.img_size = img_size
 		self.max_iter = max_iter
 		self.num_iter = 0
-		self.character_folders = [os.path.join(self.data_folder, family, character) for family in os.listdir(self.data_folder) if os.path.isdir(os.path.join(self.data_folder, family)) for character in os.listdir(os.path.join(self.data_folder, family))]
+		#self.character_folders = [os.path.join(self.data_folder, family, character) for family in os.listdir(self.data_folder) if os.path.isdir(os.path.join(self.data_folder, family)) for character in os.listdir(os.path.join(self.data_folder, family))]
 		self.img = imageManager.imageManager()
 		self.num_classes = num_classes
 
@@ -41,11 +41,11 @@ class OmniglotGenerator(object):
 	def next(self):
 		if (self.max_iter is None) or (self.num_iter < self.max_iter):
 			self.num_iter += 1
-			return (self.num_iter - 1), img.getEpsiode((i/10000)+num_classes)#self.sample(self.num_samples)
+			return (self.num_iter - 1), self.img.getEpisode(int(self.num_iter*self.batch_size/10000)+self.num_classes)#self.sample(self.num_samples)
 		else:
 			raise StopIteration
 
-	def sample(self, num_samples):
+	'''def sample(self, num_samples):
 		sampled_character_folders = random.sample(self.character_folders, num_samples)
 		random.shuffle(sampled_character_folders)
 
@@ -98,4 +98,4 @@ class OmniglotGenerator(object):
 		max_value = np.max(inverted)
 		if max_value > 0:
 			inverted /= max_value
-		return inverted
+		return inverted'''

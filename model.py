@@ -4,11 +4,11 @@ import utils
 
 #based on code from hmishra2250, used under MIT License. github: https://github.com/hmishra2250/NTM-One-Shot-TF
 
-def MANN(input_var, target, batch_size=16, num_outputs=30, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4, num_samples_per_class=10):
+def MANN(input_var, target, batch_size=16, num_outputs=30, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4, num_samples_per_class=10, num_classes=5):
 	#input dims (batch_size, time, input_dim)
 	#target dims (batch_size, time)(label_indicies)
-	input_var = tf.reshape(input_var, [batch_size, num_outputs*num_samples_per_class, 400])
-	target = tf.reshape(target, [batch_size, num_outputs*num_samples_per_class])
+	input_var = tf.reshape(input_var, [batch_size, num_classes*num_samples_per_class, 400])
+	target = tf.reshape(target, [batch_size, num_classes*num_samples_per_class, num_outputs])
 
 	memory = utils.shared_float32(1e-6*np.ones((batch_size,) + memory_shape), name="memory")
 	cell_state = utils.shared_float32(np.zeros((batch_size, controller_size)), name="cell_state")
@@ -111,7 +111,7 @@ def MANN(input_var, target, batch_size=16, num_outputs=30, memory_shape=(128,40)
 		#prep memory
 		with tf.variable_scope("memory_time"):
 			memory_time = utils.update_tensor(memory_time1, weight_leastused_time1[:,0], tf.constant(0., shape=[batch_size, memory_shape[1]]))
-			print("mem time (erased?): ", memory_time)
+			#print("mem time (erased?): ", tf.eval(memory_time))
 
 
 		memory_time = tf.add(memory_time, tf.matmul(tf.transpose(weight_write_time, perm=[0,2,1]), alpha_time))
@@ -131,19 +131,22 @@ def MANN(input_var, target, batch_size=16, num_outputs=30, memory_shape=(128,40)
 	output_shape = (batch_size*sequence_length, num_outputs)
 
 	#input concat with time offset
-	flattened_onehot_target = tf.one_hot(tf.reshape(target, [-1]), depth=num_outputs)
-	onehot_target = tf.reshape(flattened_onehot_target, (batch_size, sequence_length, num_outputs))
-	offset_target = tf.concat([tf.zeros_like(tf.expand_dims(onehot_target[:,0],1)), onehot_target[:,:-1]], axis=1)
+	#flattened_onehot_target = tf.one_hot(tf.reshape(target, [-1]), depth=num_outputs)
+	#onehot_target = tf.reshape(flattened_onehot_target, (batch_size, sequence_length, num_outputs))
+	#flattened_target = tf.reshape(target, [-1])
+
+	offset_target = tf.concat([tf.zeros_like(tf.expand_dims(target[:,0,:],1)), target[:,:-1,:]], axis=1)
 	list_input = tf.concat([input_var, offset_target], axis=2)
 
 	list_ntm = tf.scan(step, elems=tf.transpose(list_input, perm=[1,0,2]), initializer=[memory, cell_state, hidden_state, read_vector, read_weight_vector, usage_weights], name="Scan_MANN_last")
 	list_ntm_output = tf.transpose(tf.concat(list_ntm[2:4], axis=2), perm=[1,0,2])
 
-	list_input_weight_output = tf.matmul(tf.reshape(list_ntm_output, shape=(batch_size * sequence_length, -1)), weight_output)
+	list_input_weight_output = tf.matmul(tf.reshape(list_ntm_output, shape=(batch_size* sequence_length, -1)), weight_output)
 	output_preactivation = tf.add(tf.reshape(list_input_weight_output, shape=(batch_size, sequence_length, num_outputs)), bias_output)
 	output_flatten = tf.nn.softmax(tf.reshape(output_preactivation, output_shape))
 	#output = tf.reshape(output_flatten, output_preactivation.get_shape().as_list())
-	output = tf.stack([tf.nn.softmax(o) for o in tf.split(output_flatten, 5, axis=1)], axis=1)
+	output = tf.stack([tf.nn.softmax(o) for o in tf.split(output_flatten, 30, axis=1)], axis=1)
+	output = tf.reshape(output, (batch_size*sequence_length, num_outputs))
 
 	params = [weight_key, bias_key, weight_alpha, bias_alpha, weight_sigma, bias_sigma, weight_inputhidden, weight_readhidden, weight_hiddenhidden, bias_inputhidden, weight_output, bias_output]
 

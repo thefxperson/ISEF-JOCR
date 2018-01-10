@@ -52,11 +52,11 @@ def shared_one_hot(shape, dtype=tf.float32, name='', n=None):
 def weight_and_bias_init(shape, dtype=tf.float32, name='', n=None):
 	return (shared_glorot_uniform(shape, dtype=dtype, name='W_' + name, n=n), shared_zeros((shape[1],), dtype=dtype, name='b_' + name, n=n))
 
-def accuracy_instance(predictions, targets, n=[1, 2, 3, 4, 5, 10], nb_classes=5, nb_samples_per_class=10, batch_size=1):
+def accuracy_instance(predictions, targets, n=[1, 2, 3, 4, 5, 10], nb_classes=5, nb_samples_per_class=10, batch_size=1, num_outputs=30):
 	targets = tf.cast(targets, predictions.dtype)
 
 	accuracy = tf.constant(value=0, shape=(batch_size, nb_samples_per_class), dtype=tf.float32)
-	indices = tf.constant(value=0, shape=(batch_size, nb_classes+1), dtype=tf.float32)
+	indices = tf.constant(value=0, shape=(batch_size, num_outputs+1), dtype=tf.float32)
 
 	def step_(step_arg1, step_arg2):
 		accuracy, indices = step_arg1
@@ -78,6 +78,8 @@ def accuracy_instance(predictions, targets, n=[1, 2, 3, 4, 5, 10], nb_classes=5,
 		indices = indices + tf.sparse_tensor_to_dense(delta)
 		return [accuracy, indices]
 
+	print(predictions)
+	print(targets)
 	accuracy, indices = tf.scan(step_, elems=(tf.transpose(predictions, perm=[1, 0]), tf.transpose(targets, perm=[1, 0])),initializer=[accuracy, indices], name="Scan_Metric_Last")
 
 	accuracy = accuracy[-1]

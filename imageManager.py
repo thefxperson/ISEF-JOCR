@@ -62,19 +62,20 @@ class imageManager():
 		classList = random.sample(range(lower,upper+1),numClasses)	#generate random classes totalling to numClasses
 
 		#arrays of images and labels for the episode
-		episodeImgs = np.zeros((batch_size, numOutputs*numSamples*numClasses,20,20))		#array of zeros to hold images
-		episodeLabels = np.empty((batch_size, numOutputs*numSamples*numClasses),dtype=object)		#empty array to hold labels
+		episodeImgs = np.zeros((batch_size, numSamples*numClasses, 400))		#array of zeros to hold images
+		episodeLabels = np.empty((batch_size, numSamples*numClasses, numOutputs),dtype=object)		#empty array to hold labels
 		alpha = [self.alphaHot(numClasses) for i in range(batch_size)]			#generate the random alphahot labels to use for this ep
-		rotation = [random.randint(0,3) for i in range(numClasses)]	#rotates each class randomly by 90deg.
+		rotation = [[random.randint(0,3) for i in range(numClasses)] for j in range(batch_size)]	#rotates each class randomly by 90deg.
 		imgNums = [random.randint(1,20) for i in range(numSamples*numClasses)]#temp random.sample(range(20),numSamples)						#generates numSamples unique numbers for the image so the same image isn't used twice
 
 		chooseClass = [[random.randint(1,numClasses-1) for i in range(numSamples*numClasses)] for j in range(batch_size)]#choose classes randomly
 		for j in range(batch_size):
-			for i in range(10*numClasses):
-				episodeImgs[j][i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[i]],imgNums[i]), rotation[chooseClass[i]]*90))		#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
+			for i in range(numSamples*numClasses):
+				episodeImgs[j][i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[j][i]],imgNums[i]), (rotation[j][chooseClass[j][i]]*90))).flatten()	#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
 																																					#Then randomly shifts and rotates by +-10px/+-10deg, and downscale to 20x20
-				episodeLabels[j][i] = alpha[j][chooseClass[i]]				#encodes label with alpha hot
+				episodeLabels[j][i] = self.alphaToFive(alpha[j][chooseClass[j][i]])				#encodes label with alpha hot
 
+		episodeLabels = np.reshape(episodeLabels, (batch_size*numClasses*numSamples, numOutputs))
 		return episodeImgs, episodeLabels				#returns images and labelss
 
 	#generate unique labels for given number of classes in alphahot encoding
@@ -104,7 +105,6 @@ class imageManager():
 	def alphaToFive(self, labels):            #predictions[30], labels[6]
 		#convert from alpha to one hot
 		one = [[None]*5 for _ in range(6)] 
-		print(len(labels))
 		for i in range(len(labels)):         #converts to labels[6][5]
 			if labels[i] == "a":
 				one[i] = [1,0,0,0,0]
@@ -117,6 +117,3 @@ class imageManager():
 			elif labels[i] == "e":
 				one[i] = [0,0,0,0,1]
 		return np.reshape(one, 30)
-
-img = imageManager()
-print(img.getEpisode(5))

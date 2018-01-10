@@ -22,14 +22,21 @@ def main():
 	num_classes = 5
 	input_size = 20*20
 	batch_size = 16						#microbatches of 16
-	num_episodes = 100000
+	num_episodes = 32
+	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
 
-	#create placeholders
-	input_ph = tf.placeholder(dtype=tf.float32, shape=(batch_size, num_classes*num_samples_per_class*num_outputs, 400))	#batch_size, time(output*num_samples), input dims (20x20 flattened)
-	target_ph = tf.placeholder(dtype=tf.int32, shape=(batch_size, num_classes*num_samples_per_class*num_outputs))			#old: batch_size, time(output*num_samples)
 
-	generator = omniGenerator.OmniglotGenerator(data_folder="./data/omniglot", batch_size=batch_size, num_samples=num_outputs, num_samples_per_class=num_samples_per_class, max_iter=num_episodes, num_classes=num_classes)
+	#example batch
+	#batch size = 16
+	#5 clases, 10 per class
+	#input ph = (16, 50, 400)
+	#target ph = (16, 50, 30)
+	#create placeholders
+	input_ph = tf.placeholder(dtype=tf.float32, shape=(batch_size, num_classes*num_samples_per_class, 400))					#batch_size, total examples per ep, image size flattened
+	target_ph = tf.placeholder(dtype=tf.float32, shape=(batch_size* num_classes*num_samples_per_class, num_outputs))			#batch_size, total examples per ep, number of outputs
+
+	generator = omniGenerator.OmniglotGenerator(data_folder="./data/omniglot", batch_size=batch_size, num_samples=num_outputs, num_samples_per_class=num_samples_per_class, max_iter=num_batches, num_classes=num_classes)
 	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_outputs=num_outputs, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads, num_samples_per_class=num_samples_per_class)
 
 	with tf.variable_scope("weights", reuse=True):
@@ -49,37 +56,34 @@ def main():
 
 	params = [weight_key, bias_key, weight_alpha, bias_alpha, weight_sigma, bias_sigma, weight_inputhidden, weight_readhidden, weight_hiddenhidden, bias_inputhidden, weight_output, bias_output]
 
-	output_target_ph = tf.one_hot(target_ph, depth=generator.num_samples)
-	print("Output, target shapes: ", output.get_shape().as_list(), output_target_ph.get_shape().as_list())
-	#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=output_target_ph), name="cost")
-	foo = 1e-8
-	cost = tf.reduce_mean(tf.reduce_sum(tf.stack(tf.split(output_target_ph, 5, axis=2), axis=2) * tf.log(output + foo), axis=[1,2,3]))
+	#output_target_ph = tf.one_hot(target_ph, depth=generator.num_samples)
+	print("Output, target shapes: ", output.get_shape().as_list(), target_ph.get_shape().as_list())
+	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=target_ph), name="cost")
 	optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
 	train_step = optimizer.minimize(cost, var_list=params)
 
-	accuracies = utils.accuracy_instance(tf.argmax(output, axis=2), target_ph, batch_size=generator.batch_size)
-	sum_output = tf.reduce_sum(tf.reshape(tf.one_hot(tf.argmax(output, axis=2), depth=generator.num_samples), (-1, generator.num_samples)), axis=0)
+	#accuracies = utils.accuracy_instance(tf.argmax(output, axis=1), target_ph, batch_size=generator.batch_size)
+	sum_output = tf.reduce_sum(tf.reshape(tf.one_hot(tf.argmax(output, axis=1), depth=generator.num_samples), (-1, generator.num_samples)), axis=0)
 
 	saver = tf.train.Saver()	#create a savepoint of the model
 	print("done")
 
 	tf.summary.scalar("cost", cost)
-	for i in range(generator.num_samples_per_class):
-		tf.summary.scalar("accuracy-"+str(i), accuracies[i])
+	#for i in range(generator.num_samples_per_class):
+		#tf.summary.scalar("accuracy-"+str(i), accuracies[i])
 
 	merged = tf.summary.merge_all()
 	train_writer = tf.summary.FileWriter("/tmp/tensorflow/", sess.graph)
 
-	t0 = time.time()
 	all_scores, scores, accs = [],[],np.zeros(generator.num_samples_per_class)
 
 	sess.run(tf.global_variables_initializer())
 
 	print("training the model")
+	t0 = time.time()
 
 	try:
 		for i, (batch_input, batch_output) in generator:
-			classes = 5 + int(i/10000)
 			feed_dict = {
 				input_ph: batch_input,
 				target_ph: batch_output
@@ -87,13 +91,14 @@ def main():
 
 			train_step.run(feed_dict)
 			score = cost.eval(feed_dict)
-			acc = accuracies.eval(feed_dict)
+			#acc = accuracies.eval(feed_dict)
 			temp = sum_output.eval(feed_dict)
 			summary = merged.eval(feed_dict)
 			train_writer.add_summary(summary, i)
 			all_scores.append(score)
 			scores.append(score)
-			accs += acc
+			#accs += acc
+			print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
 			'''if i>=0:
 				print(accs / 100.0)
 				print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
