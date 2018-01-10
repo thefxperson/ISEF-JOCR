@@ -41,7 +41,7 @@ class OmniglotGenerator(object):
 	def next(self):
 		if (self.max_iter is None) or (self.num_iter < self.max_iter):
 			self.num_iter += 1
-			return (self.num_iter - 1), self.sample(self.num_samples)
+			return (self.num_iter - 1), img.getEpsiode((i/10000)+num_classes)#self.sample(self.num_samples)
 		else:
 			raise StopIteration
 
@@ -58,7 +58,8 @@ class OmniglotGenerator(object):
 			labels_and_images = self.get_shuffled_images(sampled_character_folders, range(num_samples), num_samples=self.num_samples_per_class)
 			sequence_length = len(labels_and_images)
 			labels, image_files = zip(*labels_and_images)
-
+			print(labels)
+			print(image_files)
 			angles = np.random.uniform(-self.max_rotation, self.max_rotation, size=sequence_length)
 			shifts = np.random.uniform(-self.max_shift, self.max_shift, size=sequence_length)
 

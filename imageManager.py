@@ -49,7 +49,7 @@ class imageManager():
 		return images
 			
 
-	def getEpisode(self, numClasses, numSamples=10, imgSize=105, train=True):
+	def getEpisode(self, numClasses, batch_size=16, numOutputs=30, numSamples=10, imgSize=105, train=True):
 		random.seed(datetime.now())				#seed based on current time... ensures that each episode is random
 		#prep for test or train episode
 		if train:				#training class range...see Omniglot_data/README.md
@@ -62,19 +62,20 @@ class imageManager():
 		classList = random.sample(range(lower,upper+1),numClasses)	#generate random classes totalling to numClasses
 
 		#arrays of images and labels for the episode
-		episodeImgs = np.zeros((numSamples*numClasses,20,20))		#array of zeros to hold images
-		#episodeLabels = np.empty(numSamples*numClasses,dtype=object)		#empty array to hold labels
-		#alpha = self.alphaHot(numClasses)							#generate the random alphahot labels to use for this ep
+		episodeImgs = np.zeros((batch_size, numOutputs*numSamples*numClasses,20,20))		#array of zeros to hold images
+		episodeLabels = np.empty((batch_size, numOutputs*numSamples*numClasses),dtype=object)		#empty array to hold labels
+		alpha = [self.alphaHot(numClasses) for i in range(batch_size)]			#generate the random alphahot labels to use for this ep
 		rotation = [random.randint(0,3) for i in range(numClasses)]	#rotates each class randomly by 90deg.
-		imgNums = [random.randint(1,20) for i in range(numSamples*numClasses)]#temprandom.sample(range(20),numSamples)						#generates numSamples unique numbers for the image so the same image isn't used twice
+		imgNums = [random.randint(1,20) for i in range(numSamples*numClasses)]#temp random.sample(range(20),numSamples)						#generates numSamples unique numbers for the image so the same image isn't used twice
 
-		chooseClass = [random.randint(1,numClasses-1) for i in range(numSamples*numClasses)]	#choose classes randomly
-		for i in range(10*numClasses):
-			episodeImgs[i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[i]],imgNums[i]), rotation[chooseClass[i]]*90))		#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
+		chooseClass = [[random.randint(1,numClasses-1) for i in range(numSamples*numClasses)] for j in range(batch_size)]#choose classes randomly
+		for j in range(batch_size):
+			for i in range(10*numClasses):
+				episodeImgs[j][i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[i]],imgNums[i]), rotation[chooseClass[i]]*90))		#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
 																																					#Then randomly shifts and rotates by +-10px/+-10deg, and downscale to 20x20
-			#episodeLabels[i] = alpha[chooseClass[i]]				#encodes label with alpha hot
+				episodeLabels[j][i] = alpha[j][chooseClass[i]]				#encodes label with alpha hot
 
-		return episodeImgs#, episodeLabels				#returns images and labelss
+		return episodeImgs, episodeLabels				#returns images and labelss
 
 	#generate unique labels for given number of classes in alphahot encoding
 	def alphaHot(self, numClasses):
@@ -100,10 +101,9 @@ class imageManager():
 		image = sp.interpolation.shift(image, random.randint(-10,10))		#shift image between -10 and 10 pixels
 		return spmc.imresize(image, (20,20))
 
-	def getLoss(prediction, labels):            #predictions[30], labels[6]
+	def alphaToFive(self, labels):            #predictions[30], labels[6]
 		#convert from alpha to one hot
 		one = [[None]*5 for _ in range(6)] 
-		labels = list(labels[0])
 		print(len(labels))
 		for i in range(len(labels)):         #converts to labels[6][5]
 			if labels[i] == "a":
@@ -116,12 +116,7 @@ class imageManager():
 				one[i] = [0,0,0,1,0]
 			elif labels[i] == "e":
 				one[i] = [0,0,0,0,1]
-		one = np.reshape(one, 30)
-		#get loss
-		diff = one - prediction
-		diff = np.absolute(diff)
-		print(diff)
-		loss = -1*np.log10(diff)        #log0 = inf
-		print(loss)
-		loss[np.isinf(loss)] = 0        #replace inf with 0
-		return np.sum(loss)
+		return np.reshape(one, 30)
+
+img = imageManager()
+print(img.getEpisode(5))

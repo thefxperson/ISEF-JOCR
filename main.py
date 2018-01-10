@@ -26,8 +26,8 @@ def main():
 	num_samples_per_class = 10
 
 	#create placeholders
-	input_ph = tf.placeholder(dtype=tf.float32, shape=(16, num_samples_per_class, num_outputs, 400))	#batch_size, time(output*num_samples), input dims (20x20 flattened)
-	target_ph = tf.placeholder(dtype=tf.int32, shape=(batch_size, num_samples_per_class, num_outputs))			#old: batch_size, time(output*num_samples)
+	input_ph = tf.placeholder(dtype=tf.float32, shape=(batch_size, num_classes*num_samples_per_class*num_outputs, 400))	#batch_size, time(output*num_samples), input dims (20x20 flattened)
+	target_ph = tf.placeholder(dtype=tf.int32, shape=(batch_size, num_classes*num_samples_per_class*num_outputs))			#old: batch_size, time(output*num_samples)
 
 	generator = omniGenerator.OmniglotGenerator(data_folder="./data/omniglot", batch_size=batch_size, num_samples=num_outputs, num_samples_per_class=num_samples_per_class, max_iter=num_episodes, num_classes=num_classes)
 	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_outputs=num_outputs, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads, num_samples_per_class=num_samples_per_class)
