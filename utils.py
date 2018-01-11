@@ -87,3 +87,5 @@ def accuracy_instance(predictions, targets, n=[1, 2, 3, 4, 5, 10], nb_classes=5,
 	accuracy = tf.reduce_mean(accuracy / nb_classes , axis=0)
 
 	return accuracy
+
+	

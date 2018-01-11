@@ -145,7 +145,8 @@ def MANN(input_var, target, batch_size=16, num_outputs=30, memory_shape=(128,40)
 	output_preactivation = tf.add(tf.reshape(list_input_weight_output, shape=(batch_size, sequence_length, num_outputs)), bias_output)
 	output_flatten = tf.nn.softmax(tf.reshape(output_preactivation, output_shape))
 	#output = tf.reshape(output_flatten, output_preactivation.get_shape().as_list())
-	output = tf.stack([tf.nn.softmax(o) for o in tf.split(output_flatten, 30, axis=1)], axis=1)
+	#output distribution (but its only one hot)
+	output = tf.stack([tf.nn.softmax(o) for o in [tf.split(p , 5, axis=1) for p in tf.split(output_flatten, 6, axis=1)]], axis=1)
 	output = tf.reshape(output, (batch_size*sequence_length, num_outputs))
 
 	params = [weight_key, bias_key, weight_alpha, bias_alpha, weight_sigma, bias_sigma, weight_inputhidden, weight_readhidden, weight_hiddenhidden, bias_inputhidden, weight_output, bias_output]

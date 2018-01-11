@@ -22,7 +22,7 @@ def main():
 	num_classes = 5
 	input_size = 20*20
 	batch_size = 16						#microbatches of 16
-	num_episodes = 32
+	num_episodes = 16
 	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
 
@@ -63,7 +63,11 @@ def main():
 	train_step = optimizer.minimize(cost, var_list=params)
 
 	#accuracies = utils.accuracy_instance(tf.argmax(output, axis=1), target_ph, batch_size=generator.batch_size)
-	sum_output = tf.reduce_sum(tf.reshape(tf.one_hot(tf.argmax(output, axis=1), depth=generator.num_samples), (-1, generator.num_samples)), axis=0)
+	#tempacc = tf.argmax(output, axis=1)
+	#preds = [[tf.argmax(o) for o in tf.split(output, 6, axis=1)] for i in range(800)]
+	#ans = [[tf.argmax(p) for p in tf.split(target_ph, 6, axis=1)] for i in range(800)]
+	#accuracy = tf.reduce_mean(tf.cast(tf.equal(preds, ans), tf.float32))
+	sum_output = tf.one_hot([tf.argmax(t, axis=1) for t in tf.split(output, 6, axis=1)], depth=generator.num_samples)
 
 	saver = tf.train.Saver()	#create a savepoint of the model
 	print("done")
@@ -92,6 +96,7 @@ def main():
 			train_step.run(feed_dict)
 			score = cost.eval(feed_dict)
 			#acc = accuracies.eval(feed_dict)
+			#acc = accuracy.eval(feed_dict)
 			temp = sum_output.eval(feed_dict)
 			summary = merged.eval(feed_dict)
 			train_writer.add_summary(summary, i)
@@ -99,6 +104,7 @@ def main():
 			scores.append(score)
 			#accs += acc
 			print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
+			print("cost", score, "temp", temp[0], "acc", sess.run(output[1]))
 			'''if i>=0:
 				print(accs / 100.0)
 				print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
