@@ -67,7 +67,10 @@ def main():
 	#preds = [[tf.argmax(o) for o in tf.split(output, 6, axis=1)] for i in range(800)]
 	#ans = [[tf.argmax(p) for p in tf.split(target_ph, 6, axis=1)] for i in range(800)]
 	#accuracy = tf.reduce_mean(tf.cast(tf.equal(preds, ans), tf.float32))
-	sum_output = tf.one_hot([tf.argmax(t, axis=1) for t in tf.split(output, 6, axis=1)], depth=generator.num_samples)
+	#sum_output = tf.one_hot([tf.argmax(t, axis=1) for t in tf.split(output, 6, axis=1)], depth=generator.num_samples)
+	output_split = tf.split(output, 6, axis=1)
+	tmp = tf.Print(output_split, output_split)
+	sum_output = tf.stack([tf.one_hot([tf.argmax(t, axis = 1)], depth=1) for t in output_split], axis=1)
 
 	saver = tf.train.Saver()	#create a savepoint of the model
 	print("done")
@@ -95,16 +98,17 @@ def main():
 
 			train_step.run(feed_dict)
 			score = cost.eval(feed_dict)
-			#acc = accuracies.eval(feed_dict)
-			#acc = accuracy.eval(feed_dict)
+
 			temp = sum_output.eval(feed_dict)
+			foo = tmp.eval(feed_dict)
+
 			summary = merged.eval(feed_dict)
 			train_writer.add_summary(summary, i)
 			all_scores.append(score)
 			scores.append(score)
 			#accs += acc
 			print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
-			print("cost", score, "temp", temp[0], "acc", sess.run(output[1]))
+			print("cost", score, "temp",  output[0].eval(feed_dict), "foo", output_flatten[0].eval(feed_dict))
 			'''if i>=0:
 				print(accs / 100.0)
 				print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
