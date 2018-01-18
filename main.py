@@ -76,51 +76,43 @@ def main():
 	print("done")
 
 	tf.summary.scalar("cost", cost)
-	#for i in range(generator.num_samples_per_class):
-		#tf.summary.scalar("accuracy-"+str(i), accuracies[i])
+	#for i in range(3):
+		#tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tensorflow/", sess.graph)
-
-	all_scores, scores, accs = [],[],np.zeros(generator.num_samples_per_class)
+	train_writer = tf.summary.FileWriter("/tmp/tboard/")
 
 	sess.run(tf.global_variables_initializer())
 
 	print("training the model")
 	t0 = time.time()
 
-	try:
-		for i, (batch_input, batch_output) in generator:
-			feed_dict = {
-				input_ph: batch_input,
-				target_ph: batch_output
-			}
+	for i, (batch_input, batch_output) in generator:
+		feed_dict = {
+			input_ph: batch_input,
+			target_ph: batch_output
+		}
 
-			train_step.run(feed_dict)
-			score = cost.eval(feed_dict)
+		train_step.run(feed_dict)
+		score = cost.eval(feed_dict)
 
-			temp = sum_output.eval(feed_dict)
-			foo = tmp.eval(feed_dict)
+		temp = sum_output.eval(feed_dict)
+		foo = tmp.eval(feed_dict)
 
-			summary = merged.eval(feed_dict)
-			train_writer.add_summary(summary, i)
-			all_scores.append(score)
-			scores.append(score)
-			#accs += acc
-			print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
-			print("cost", score, "temp",  output[0].eval(feed_dict), "foo", output_flatten[0].eval(feed_dict))
-			'''if i>=0:
-				print(accs / 100.0)
-				print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
-				scores, accs = [], np.zeros(generator.num_samples_per_class)'''
+		summary = merged.eval(feed_dict)
+		train_writer.add_summary(summary, i)
+		all_scores.append(score)
+		scores.append(score)
+		#accs += acc
+		print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
+		print("cost", score, "temp",  output[0].eval(feed_dict), "foo", output_flatten[0].eval(feed_dict))
+		'''if i>=0:
+			print(accs / 100.0)
+			print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
+			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
-	except KeyboardInterrupt:
-		saver.save(sess, "/save/lstmSave.ckpt")		#save learned weights and biases
-		print(time.time()-t0)
-		try:
-			sys.exit(0)
-		except SystemExit:
-			os._exit(0)
+	saver.save(sess, "/save/base.ckpt")		#save learned weights and biases
+	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":
 	main()
