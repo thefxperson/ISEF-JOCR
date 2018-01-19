@@ -67,16 +67,29 @@ class imageManager():
 		alpha = [self.alphaHot(numClasses) for i in range(batch_size)]			#generate the random alphahot labels to use for this ep
 		rotation = [[random.randint(0,3) for i in range(numClasses)] for j in range(batch_size)]	#rotates each class randomly by 90deg.
 		imgNums = [random.randint(1,20) for i in range(numSamples*numClasses)]#temp random.sample(range(20),numSamples)						#generates numSamples unique numbers for the image so the same image isn't used twice
+		inst = np.zeros((batch_size, numClasses, 3), dtype=int)							#stores the 1st, 5th, and 10th instance of every class
+		foo = np.zeros((batch_size, numClasses))
 
-		chooseClass = [[random.randint(1,numClasses-1) for i in range(numSamples*numClasses)] for j in range(batch_size)]#choose classes randomly
+		chooseClass = [[random.randint(0,numClasses-1) for i in range(numSamples*numClasses)] for j in range(batch_size)]#choose classes randomly
 		for j in range(batch_size):
 			for i in range(numSamples*numClasses):
 				episodeImgs[j][i] = self.adjustImg(sp.interpolation.rotate(self.importImgs(classList[chooseClass[j][i]],imgNums[i]), (rotation[j][chooseClass[j][i]]*90))).flatten()	#get random image from chosen class, rotates that by 0, 90, 180, or 270 deg. 
 																																					#Then randomly shifts and rotates by +-10px/+-10deg, and downscale to 20x20
 				episodeLabels[j][i] = self.alphaToFive(alpha[j][chooseClass[j][i]])				#encodes label with alpha hot
 
+				foo[j][chooseClass[j][i]] += 1
+				if foo[j][chooseClass[j][i]] == 1:
+					inst[j][chooseClass[j][i]][0] = i
+				elif foo[j][chooseClass[j][i]] == 5:
+					inst[j][chooseClass[j][i]][1] = i
+				elif foo[j][chooseClass[j][i]] == 10:
+					inst[j][chooseClass[j][i]][2] = i
+
+
 		episodeLabels = np.reshape(episodeLabels, (batch_size*numClasses*numSamples, numOutputs))
-		return episodeImgs, episodeLabels				#returns images and labelss
+		inst = np.reshape(inst, (batch_size*numClasses, 3))
+
+		return episodeImgs, episodeLabels, inst				#returns images and labelss
 
 	#generate unique labels for given number of classes in alphahot encoding
 	def alphaHot(self, numClasses):

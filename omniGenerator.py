@@ -41,7 +41,7 @@ class OmniglotGenerator(object):
 	def next(self):
 		if (self.max_iter is None) or (self.num_iter < self.max_iter):
 			self.num_iter += 1
-			return (self.num_iter - 1), self.img.getEpisode(int(self.num_iter*self.batch_size/10000)+self.num_classes)#self.sample(self.num_samples)
+			return (self.num_iter - 1), self.img.getEpisode(self.num_classes, batch_size=self.batch_size)#self.sample(self.num_samples)
 		else:
 			raise StopIteration
 
