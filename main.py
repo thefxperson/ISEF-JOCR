@@ -60,7 +60,7 @@ def main():
 	print("Output, target shapes: ", output.get_shape().as_list(), target_ph.get_shape().as_list())
 	#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=target_ph), name="cost")
 	eps=1e-8				#make sure you don't take log 0
-	cost = -tf.reduce_mean(tf.reduce_sum(tf.stack(tf.matmul(tf.split(target_ph, 6, axis=1), tf.log(tf.split(output+eps, 6, axis=1))))))
+	cost = -tf.reduce_mean(tf.reduce_sum(tf.stack(tf.split(target_ph, 6, axis=1) * tf.log(tf.split(output+eps, 6, axis=1)))))
 	optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
 	#optimizer = tf.train.AdamOptimizer(learning_rate=1e-3)
 	train_step = optimizer.minimize(cost, var_list=params)
