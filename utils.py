@@ -89,14 +89,19 @@ def accuracy_instance(predictions, targets, n=[1, 2, 3, 4, 5, 10], nb_classes=5,
 	return accuracy
 
 def accuracy(predictions, target, inst, num_classes=5, batch_size=10):
-	acc = [[],[],[]]
+	'''acc = [[],[],[]]
 	inst = tf.reshape(inst, [num_classes*batch_size, 3])
 	for i in range(inst.get_shape()[0]):
 		for j in range(3):
 			foo = tf.cond(tf.reduce_all(tf.equal(target[inst[i][j]], predictions[inst[i][j]])), lambda: tf.constant(1), lambda: tf.constant(0))
 			acc[j].append(foo)
-	'''temp = []			
+	temp = []			
 	temp.append(tf.reduce_mean(tf.stack(acc[0])))
 	temp.append(tf.reduce_mean(tf.stack(acc[1])))
-	temp.append(tf.reduce_mean(tf.stack(acc[2])))'''
-	return tf.stack([tf.reduce_mean(tf.stack(acc[0])),tf.reduce_mean(tf.stack(acc[1])),tf.reduce_mean(tf.stack(acc[2]))])
+	temp.append(tf.reduce_mean(tf.stack(acc[2])))
+	return tf.stack([tf.reduce_mean(tf.stack(acc[0])),tf.reduce_mean(tf.stack(acc[1])),tf.reduce_mean(tf.stack(acc[2]))])'''
+	acc = []
+	for i in range(predictions[0]):
+		foo = tf.cond(tf.reduce_all(tf.equal(target[i], predictions[i])), lambda: tf.constant(1), lambda: tf.constant(0))
+		acc.append(foo)
+	return tf.reduce_mean(foo)

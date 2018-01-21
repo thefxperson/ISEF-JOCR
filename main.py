@@ -58,9 +58,11 @@ def main():
 
 	#output_target_ph = tf.one_hot(target_ph, depth=generator.num_samples)
 	print("Output, target shapes: ", output.get_shape().as_list(), target_ph.get_shape().as_list())
-	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=target_ph), name="cost")
-	#optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
-	optimizer = tf.train.AdamOptimizer(learning_rate=1e-3)
+	#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=target_ph), name="cost")
+	eps=1e-8				#make sure you don't take log 0
+	cost = -tf.reduce_mean(tf.reduce_sum(tf.stack(tf.matmul(tf.split(target_ph, 6, axis=1), tf.log(tf.split(output+eps, 6, axis=1))))))
+	optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
+	#optimizer = tf.train.AdamOptimizer(learning_rate=1e-3)
 	train_step = optimizer.minimize(cost, var_list=params)
 
 	#accuracies = utils.accuracy_instance(tf.argmax(output, axis=1), target_ph, batch_size=generator.batch_size)
@@ -78,7 +80,7 @@ def main():
 		tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tboard/baseAdam/")
+	train_writer = tf.summary.FileWriter("/tmp/tboard/baseNewLoss/")
 
 	sess.run(tf.global_variables_initializer())
 
@@ -108,7 +110,7 @@ def main():
 			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	print("saving the model")
-	saver.save(sess, "/save/baseAdam.ckpt")		#save learned weights and biases
+	saver.save(sess, "/save/baseNewLoss.ckpt")		#save learned weights and biases
 	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":
