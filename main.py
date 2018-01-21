@@ -76,8 +76,8 @@ def main():
 	print("done")
 
 	tf.summary.scalar("cost", cost)
-	for i in range(3):
-		tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
+	#for i in range(3):
+	#	tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
 	train_writer = tf.summary.FileWriter("/tmp/tboard/baseNewLoss/")
