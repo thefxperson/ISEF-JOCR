@@ -101,7 +101,7 @@ def accuracy(predictions, target, inst, num_classes=5, batch_size=10):
 	temp.append(tf.reduce_mean(tf.stack(acc[2])))
 	return tf.stack([tf.reduce_mean(tf.stack(acc[0])),tf.reduce_mean(tf.stack(acc[1])),tf.reduce_mean(tf.stack(acc[2]))])'''
 	acc = []
-	for i in range(predictions[0]):
+	for i in range(predictions.get_shape().as_list()[0]):
 		foo = tf.cond(tf.reduce_all(tf.equal(target[i], predictions[i])), lambda: tf.constant(1), lambda: tf.constant(0))
 		acc.append(foo)
 	return tf.reduce_mean(foo)
