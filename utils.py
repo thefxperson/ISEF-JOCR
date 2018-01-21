@@ -93,11 +93,8 @@ def accuracy(predictions, target, inst, num_classes=5, batch_size=10):
 	inst = tf.reshape(inst, [num_classes*batch_size, 3])
 	for i in range(inst.get_shape()[0]):
 		for j in range(3):
-			if j > 0 and inst[i][j] == 0:		#there won't always be 10 per class, sometimes 9, sometimes 10, sometimes 11. These will leave a 0 instead of the proper instance
-				continue
-			else:
-				foo = tf.cond(tf.reduce_all(tf.equal(target[inst[i][j]], predictions[inst[i][j]])), lambda: tf.constant(1), lambda: tf.constant(0))
-				acc[j].append(foo)
+			foo = tf.cond(tf.reduce_all(tf.equal(target[inst[i][j]], predictions[inst[i][j]])), lambda: tf.constant(1), lambda: tf.constant(0))
+			acc[j].append(foo)
 	'''temp = []			
 	temp.append(tf.reduce_mean(tf.stack(acc[0])))
 	temp.append(tf.reduce_mean(tf.stack(acc[1])))

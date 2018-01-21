@@ -21,7 +21,7 @@ def main():
 	num_classes = 15
 	input_size = 20*20
 	batch_size = 10						#microbatches of 10
-	num_episodes = 100
+	num_episodes = 10000
 	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
 
@@ -59,7 +59,8 @@ def main():
 	#output_target_ph = tf.one_hot(target_ph, depth=generator.num_samples)
 	print("Output, target shapes: ", output.get_shape().as_list(), target_ph.get_shape().as_list())
 	cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=target_ph), name="cost")
-	optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
+	#optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
+	optimizer = tf.train.AdamOptimizer(learning_rate=1e-3)
 	train_step = optimizer.minimize(cost, var_list=params)
 
 	#accuracies = utils.accuracy_instance(tf.argmax(output, axis=1), target_ph, batch_size=generator.batch_size)
@@ -69,6 +70,7 @@ def main():
 	sum_output = tf.stack([tf.one_hot([tf.argmax(t, axis = 1)], depth=1) for t in output_split], axis=1)
 
 	saver = tf.train.Saver()	#create a savepoint of the model
+	#saver.restore(sess, "/save/baseAdam.ckpt")
 	print("done")
 
 	tf.summary.scalar("cost", cost)
@@ -76,7 +78,7 @@ def main():
 		tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tboard/")
+	train_writer = tf.summary.FileWriter("/tmp/tboard/baseAdam/")
 
 	sess.run(tf.global_variables_initializer())
 
@@ -106,7 +108,7 @@ def main():
 			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	print("saving the model")
-	saver.save(sess, "/save/base.ckpt")		#save learned weights and biases
+	saver.save(sess, "/save/baseAdam.ckpt")		#save learned weights and biases
 	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":
