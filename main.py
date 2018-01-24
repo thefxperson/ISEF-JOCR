@@ -21,7 +21,7 @@ def main():
 	num_classes = 15
 	input_size = 20*20
 	batch_size = 10						#microbatches of 10
-	num_episodes = 10000
+	num_episodes = 15000
 	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
 
@@ -67,12 +67,12 @@ def main():
 
 	#accuracies = utils.accuracy_instance(tf.argmax(output, axis=1), target_ph, batch_size=generator.batch_size)
 	accuracies = utils.accuracy(output_flatten, target_ph, inst_ph, num_classes=num_classes, batch_size=batch_size)
+	#accuracies = utils.test_f(target_ph, output_flatten)
 	output_split = tf.split(output, 6, axis=1)
 	tmp = tf.Print(output_split, output_split)
 	sum_output = tf.stack([tf.one_hot([tf.argmax(t, axis = 1)], depth=1) for t in output_split], axis=1)
 
 	saver = tf.train.Saver()	#create a savepoint of the model
-	#saver.restore(sess, "/save/baseAdam.ckpt")
 	print("done")
 
 	tf.summary.scalar("cost", cost)
@@ -80,9 +80,10 @@ def main():
 	#	tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tboard/baseNewLoss/")
+	train_writer = tf.summary.FileWriter("/tmp/tboard/baseNewLoss2/")
 
 	sess.run(tf.global_variables_initializer())
+	saver.restore(sess, "/save/baseNewLoss.ckpt")
 
 	print("training the model")
 	t0 = time.time()
@@ -110,7 +111,7 @@ def main():
 			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	print("saving the model")
-	saver.save(sess, "/save/baseNewLoss.ckpt")		#save learned weights and biases
+	saver.save(sess, "/save/baseNewLoss2.ckpt")		#save learned weights and biases
 	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":
