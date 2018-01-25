@@ -37,7 +37,7 @@ def main():
 	inst_ph = tf.placeholder(dtype=tf.int32, shape=(None, 3))
 
 	generator = omniGenerator.OmniglotGenerator(data_folder="./data/omniglot", batch_size=batch_size, num_samples=num_outputs, num_samples_per_class=num_samples_per_class, max_iter=num_batches, num_classes=num_classes)
-	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_outputs=num_outputs, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads, num_samples_per_class=num_samples_per_class, num_classes=num_classes, firstTime=True)
+	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_outputs=num_outputs, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads, num_samples_per_class=num_samples_per_class, num_classes=num_classes)
 
 	with tf.variable_scope("weights", reuse=True):
 			weight_key = tf.get_variable("weight_key", shape=(num_reads, controller_size, memory_shape[1]))

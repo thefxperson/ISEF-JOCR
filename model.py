@@ -4,7 +4,7 @@ import utils
 
 #based on code from hmishra2250, used under MIT License. github: https://github.com/hmishra2250/NTM-One-Shot-TF
 
-def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4, num_samples_per_class=10, num_classes=5, firstTime=False):
+def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4, num_samples_per_class=10, num_classes=5):
 	#input dims (batch_size, time, input_dim)
 	#target dims (batch_size, time)(label_indicies)
 	input_var = tf.reshape(input_var, [batch_size, num_classes*num_samples_per_class, 400])
@@ -25,62 +25,33 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 			high = np.sqrt(6. / (np.sum(shape[:2]) * np.prod(shape[2:])))
 		return (list(shape), high)
 
-	if firstTime:
-		with tf.variable_scope("weights"):
+	with tf.variable_scope("weights"):
 			#get the weights and biases if they exist -- otherwise initialize weights and biases
-			shape, high = shape_high((num_reads, controller_size, memory_shape[1]))
-			weight_key = tf.get_variable("weight_key", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_key = tf.get_variable("bias_key", shape=(num_reads, memory_shape[1]), initializer=tf.constant_initializer(0))
-			weight_alpha = tf.get_variable("weight_alpha", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_alpha = tf.get_variable("bias_alpha", shape=(num_reads, memory_shape[1]), initializer=tf.constant_initializer(0))
+		shape, high = shape_high((num_reads, controller_size, memory_shape[1]))
+		weight_key = tf.get_variable("weight_key", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		bias_key = tf.get_variable("bias_key", shape=(num_reads, memory_shape[1]), initializer=tf.constant_initializer(0))
+		weight_alpha = tf.get_variable("weight_alpha", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		bias_alpha = tf.get_variable("bias_alpha", shape=(num_reads, memory_shape[1]), initializer=tf.constant_initializer(0))
 
-			shape, high = shape_high((num_reads, controller_size, 1))
-			weight_sigma = tf.get_variable("weight_sigma", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_sigma = tf.get_variable("bias_sigma", shape=(num_reads, 1), initializer=tf.constant_initializer(0))
+		shape, high = shape_high((num_reads, controller_size, 1))
+		weight_sigma = tf.get_variable("weight_sigma", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		bias_sigma = tf.get_variable("bias_sigma", shape=(num_reads, 1), initializer=tf.constant_initializer(0))
 
-			shape, high = shape_high((input_size+num_outputs, 4*controller_size))
-			weight_inputhidden = tf.get_variable("weight_inputhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_inputhidden = tf.get_variable("bias_inputhidden", shape=(4*controller_size), initializer=tf.constant_initializer(0))
+		shape, high = shape_high((input_size+num_outputs, 4*controller_size))
+		weight_inputhidden = tf.get_variable("weight_inputhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		bias_inputhidden = tf.get_variable("bias_inputhidden", shape=(4*controller_size), initializer=tf.constant_initializer(0))
 
-			shape, high = shape_high((controller_size + num_reads * memory_shape[1], num_outputs))
-			weight_output = tf.get_variable("weight_output", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_output = tf.get_variable("bias_output", shape=(num_outputs), initializer=tf.constant_initializer(0))
+		shape, high = shape_high((controller_size + num_reads * memory_shape[1], num_outputs))
+		weight_output = tf.get_variable("weight_output", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		bias_output = tf.get_variable("bias_output", shape=(num_outputs), initializer=tf.constant_initializer(0))
 
-			shape, high = shape_high((num_reads * memory_shape[1], 4 * controller_size))
-			weight_readhidden = tf.get_variable("weight_readhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		shape, high = shape_high((num_reads * memory_shape[1], 4 * controller_size))
+		weight_readhidden = tf.get_variable("weight_readhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
 
-			shape, high = shape_high((controller_size, 4*controller_size))
-			weight_hiddenhidden = tf.get_variable("weight_hiddenhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
+		shape, high = shape_high((controller_size, 4*controller_size))
+		weight_hiddenhidden = tf.get_variable("weight_hiddenhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
 
-			gamma = tf.get_variable("gamma", shape=[1], initializer=tf.constant_initializer(0.95))
-	else:
-		with tf.variable_scope("weights", reuse=True):
-			#get the weights and biases if they exist -- otherwise initialize weights and biases
-			shape, high = shape_high((num_reads, controller_size, memory_shape[1]))
-			weight_key = tf.get_variable("weight_key", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_key = tf.get_variable("bias_key", shape=(num_reads, memory_shape[1]), initializer=tf.constant_initializer(0))
-			weight_alpha = tf.get_variable("weight_alpha", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_alpha = tf.get_variable("bias_alpha", shape=(num_reads, memory_shape[1]), initializer=tf.constant_initializer(0))
-
-			shape, high = shape_high((num_reads, controller_size, 1))
-			weight_sigma = tf.get_variable("weight_sigma", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_sigma = tf.get_variable("bias_sigma", shape=(num_reads, 1), initializer=tf.constant_initializer(0))
-
-			shape, high = shape_high((input_size+num_outputs, 4*controller_size))
-			weight_inputhidden = tf.get_variable("weight_inputhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_inputhidden = tf.get_variable("bias_inputhidden", shape=(4*controller_size), initializer=tf.constant_initializer(0))
-
-			shape, high = shape_high((controller_size + num_reads * memory_shape[1], num_outputs))
-			weight_output = tf.get_variable("weight_output", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-			bias_output = tf.get_variable("bias_output", shape=(num_outputs), initializer=tf.constant_initializer(0))
-
-			shape, high = shape_high((num_reads * memory_shape[1], 4 * controller_size))
-			weight_readhidden = tf.get_variable("weight_readhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-
-			shape, high = shape_high((controller_size, 4*controller_size))
-			weight_hiddenhidden = tf.get_variable("weight_hiddenhidden", shape=shape, initializer=tf.random_uniform_initializer(-1*high, high))
-
-			gamma = tf.get_variable("gamma", shape=[1], initializer=tf.constant_initializer(0.95))
+		gamma = tf.get_variable("gamma", shape=[1], initializer=tf.constant_initializer(0.95))
 
 	def slice_equally(x, size, num_slices):
 		#type: (object, object, object) -> object
@@ -125,11 +96,42 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		head_param_list = tf.nn.xw_plus_b(hidden_time, weight_key, bias_key)
 		head_param_list = tf.split(head_param_list, num_reads, axis=0)
 
+		indicies_time1, usage_weights_time1 = self.least_used(usage_weights_time1)
+		weight_read_list = []
+		weight_write_list = []
+		key_list = []
+		read_vector_list = []
 		for i, param in enumerate(head_param_list):
 			with tf.variable_scope("addressing head %d", i):
 				key = tf.tanh(param[:, 0:memory_shape[1]], name="key")	#eq13 i think
 				sigmoid_alpha = tf.sigmoid(param[:, -1:], name="sigmoid_alpha")
-				weight_right
+				weight_read = self.read_head_addressing(key, memory_time1)
+				weight_write = self.write_head_addressing(sigmoid_alpha, weight_read_time1, weight_leastused_time1)
+			weight_read_list.append(weight_read)
+			weight_write_list.append(weight_write)
+			key_list.append(key)
+
+		usage_weights = gamma * usage_weights_time1 + tf.add_n(weight_read_list) + tf.add_n(weight_write_list)
+
+		memory_time = memory_time1 * tf.expand_dims(1. - tf.one_hot(indicies_time1[:, -1], memory_shape[0]), dim=2)
+
+		#writing
+		with tf.variable_scope("writing"):
+			for i in range(num_reads):
+				w = tf.expand_dims(weight_write_list[i], axis=2)
+				key = tf.expand_dims(key_list[i], axis=1)
+				memory_time += tf.matmul(w, key)
+
+		#reading
+		with tf.variable_scope("reading"):
+			for i in range(num_reads):
+				read_vector_time = tf.reduce_sum(tf.expand_dims(weight_read_list[i], dim=2) * memory_time, axis=1)
+				read_vector_list.append(read_vector_time)
+
+		ouput = tf.concat([hidden_time] + read_vector_list, axis=1)
+
+		return [memory_time, cell_time, hidden_time, output, read_vector_list, weight_read_list, weight_write_list, usage_weights, memory_time]
+
 
 		'''
 		#MANN
