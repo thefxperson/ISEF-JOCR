@@ -21,7 +21,7 @@ def main():
 	num_classes = 15
 	input_size = 20*20
 	batch_size = 10						#microbatches of 10
-	num_episodes = 15000
+	num_episodes = 200
 	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
 
@@ -30,7 +30,7 @@ def main():
 	#batch size = 16
 	#5 clases, 10 per class
 	#input ph = (16, 50, 400)
-	#target ph = (16, 50, 30)
+	#target ph = (16, 50, 30).eval(feed_dict)_decode
 	#create placeholders
 	input_ph = tf.placeholder(dtype=tf.float32, shape=(batch_size, None, 400))					#batch_size, total examples per ep, image size flattened
 	target_ph = tf.placeholder(dtype=tf.float32, shape=(None, num_outputs))			#batch_size, total examples per ep, number of outputs
@@ -66,8 +66,7 @@ def main():
 	train_step = optimizer.minimize(cost, var_list=params)
 
 	#accuracies = utils.accuracy_instance(tf.argmax(output, axis=1), target_ph, batch_size=generator.batch_size)
-	accuracies = utils.accuracy(output_flatten, target_ph, inst_ph, num_classes=num_classes, batch_size=batch_size)
-	#accuracies = utils.test_f(target_ph, output_flatten)
+	#accuracies = utils.accuracy(output_flatten, target_ph, inst_ph, num_classes=num_classes, batch_size=batch_size)
 	output_split = tf.split(output, 6, axis=1)
 	tmp = tf.Print(output_split, output_split)
 	sum_output = tf.stack([tf.one_hot([tf.argmax(t, axis = 1)], depth=1) for t in output_split], axis=1)
@@ -83,7 +82,7 @@ def main():
 	train_writer = tf.summary.FileWriter("/tmp/tboard/baseNewLoss2/")
 
 	sess.run(tf.global_variables_initializer())
-	saver.restore(sess, "/save/baseNewLoss.ckpt")
+	saver.restore(sess, "/save/baseNewLoss2.ckpt")
 
 	print("training the model")
 	t0 = time.time()
@@ -98,13 +97,15 @@ def main():
 		train_step.run(feed_dict)
 		score = cost.eval(feed_dict)
 
-		acc = accuracies.eval(feed_dict)
+		#acc = accuracies.eval(feed_dict)
 
 		summary = merged.eval(feed_dict)
 		train_writer.add_summary(summary, i)
 		#accs += acc
 		print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
-		print("cost", score, "acc",  acc)
+		print("cost", score)
+		accuracies = utils.test_f(target_ph.eval(feed_dict), output_flatten.eval(feed_dict))
+		print(accuracies)
 		'''if i>=0:
 			print(accs / 100.0)
 			print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))

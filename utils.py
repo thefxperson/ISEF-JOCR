@@ -107,9 +107,11 @@ def accuracy(predictions, target, inst, num_classes=5, batch_size=10):
 	return tf.reduce_mean(tf.cast(foo, tf.float32))
 
 def five_hot_decode(x):
-	x = np.reshape(x, newshape=np.shape(x)[:-1] + (5, 5))
+	#print(x.get_shape().as_list()[:-1])
+	x = np.reshape(x, newshape=np.shape(x)[:-1] + (6, 5))
+	# = tf.reshape(x, tf.stack([None, 6, 5]))
 	def f(a):
-		return sum([a[i] * 5 ** i for i in range(5)])
+		return sum([a[i] * 5 ** i for i in range(6)])
 	return np.apply_along_axis(f, -1, np.argmax(x, axis=-1))
 	
 def test_f( y, output):
@@ -117,17 +119,23 @@ def test_f( y, output):
 	total = [0] * 10
 	y_decode = five_hot_decode(y)
 	output_decode = five_hot_decode(output)
-	for i in range(np.shape(y)[0]):
+	'''y = tf.split(y, 6, axis=1)
+	y = tf.argmax(y, axis=2)
+	output = tf.split(output, 6, axis=1)
+	output= tf.argmax(output, axis=2)'''
+	for i in range(np.shape(y_decode)[0]):
 		y_i = y_decode[i]
 		output_i = output_decode[i]
 		# print(y_i)
 		# print(output_i)
 		class_count = {}
-		for j in range(10):
-			if y_i[j] not in class_count:
-				class_count[y_i[j]] = 0
-			class_count[y_i[j]] += 1
-			total[class_count[y_i[j]]] += 1
-			if y_i[j] == output_i[j]:
-				correct[class_count[y_i[j]]] += 1
-	return [float(correct[i]) / total[i] if total[i] > 0. else 0. for i in range(1, 11)]
+		if y_i not in class_count:
+			class_count[y_i] = 0
+		else:
+			class_count[y_i] += 1
+		total[class_count[y_i]] += 1
+		if y_i == output_i:
+			print("yay")
+			correct[class_count[y_i]] += 1
+
+	return [float(correct[i]) / total[i] if total[i] > 0. else 0. for i in range(10)]
