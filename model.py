@@ -98,6 +98,7 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 			bias_alpha = tf.get_variable("bias_alpha", shape=(num_reads, memory_shape[1]))
 			weight_sigma = tf.get_variable("weight_sigma", shape=(num_reads, controller_size, 1))
 			bias_sigma = tf.get_variable("bias_sigma", shape=(num_reads, 1))
+
 			weight_inputhidden = tf.get_variable("weight_inputhidden", shape=(input_size + num_outputs, 4 * controller_size))
 			bias_inputhidden = tf.get_variable("bias_inputhidden", shape=(4 * controller_size))
 			weight_output = tf.get_variable("weight_output", shape=(controller_size + num_reads * memory_shape[1], num_outputs))
@@ -118,6 +119,19 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		cell_time = forget_gate * cell_time1 + input_gate * inputtMod_gate	#update cell state
 		hidden_time = output_gate * tf.tanh(cell_time)						#update hidden state
 
+
+		#MANN
+
+		head_param_list = tf.nn.xw_plus_b(hidden_time, weight_key, bias_key)
+		head_param_list = tf.split(head_param_list, num_reads, axis=0)
+
+		for i, param in enumerate(head_param_list):
+			with tf.variable_scope("addressing head %d", i):
+				key = tf.tanh(param[:, 0:memory_shape[1]], name="key")	#eq13 i think
+				sigmoid_alpha = tf.sigmoid(param[:, -1:], name="sigmoid_alpha")
+				weight_right
+
+		'''
 		#MANN
 		hidden_time_weight_key = tf.matmul(hidden_time, tf.reshape(weight_key, shape=(controller_size, -1)))			#hidden layer is multiplied by weights before being activated to create key
 		key_time = tf.tanh(tf.reshape(hidden_time_weight_key, shape=(batch_size, num_reads, memory_shape[1])) + bias_key)		#previous value through activation function (with bias) to create key (k sub t in paper, used in eq17)
@@ -154,6 +168,7 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		read_time = tf.reshape(tf.matmul(read_vector_time, memory_time), [batch_size, -1])
 
 		return [memory_time, cell_time, hidden_time, read_time, read_vector_time, usage_weights_time]
+		'''
 
 	#model
 	sequence_length = target.get_shape().as_list()[1]
