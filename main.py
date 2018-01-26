@@ -21,7 +21,7 @@ def main():
 	num_classes = 15
 	input_size = 20*20
 	batch_size = 10						#microbatches of 10
-	num_episodes = 200
+	num_episodes = 10000
 	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
 
@@ -40,10 +40,10 @@ def main():
 	output, output_flatten, params = model.MANN(input_ph, target_ph, batch_size=batch_size, num_outputs=num_outputs, memory_shape=memory_shape, controller_size=controller_size, input_size=input_size, num_reads=num_reads, num_samples_per_class=num_samples_per_class, num_classes=num_classes)
 
 	with tf.variable_scope("weights", reuse=True):
-			weight_key = tf.get_variable("weight_key", shape=(num_reads, controller_size, memory_shape[1]))
-			bias_key = tf.get_variable("bias_key", shape=(num_reads, memory_shape[1]))
-			weight_alpha = tf.get_variable("weight_alpha", shape=(num_reads, controller_size, memory_shape[1]))
-			bias_alpha = tf.get_variable("bias_alpha", shape=(num_reads, memory_shape[1]))
+			weight_key = tf.get_variable("weight_key", shape=(controller_size, memory_shape[1]))
+			bias_key = tf.get_variable("bias_key", shape=memory_shape[1])
+			weight_alpha = tf.get_variable("weight_alpha", shape=(controller_size, ((memory_shape[1]+1)*num_reads)))
+			bias_alpha = tf.get_variable("bias_alpha", shape=((memory_shape[1]+1)*num_reads))
 			weight_sigma = tf.get_variable("weight_sigma", shape=(num_reads, controller_size, 1))
 			bias_sigma = tf.get_variable("bias_sigma", shape=(num_reads, 1))
 			weight_inputhidden = tf.get_variable("weight_inputhidden", shape=(input_size + num_outputs, 4 * controller_size))
@@ -79,10 +79,10 @@ def main():
 	#	tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tboard/baseNewLoss2/")
+	train_writer = tf.summary.FileWriter("/tmp/tboard/newModel/")
 
 	sess.run(tf.global_variables_initializer())
-	saver.restore(sess, "/save/baseNewLoss2.ckpt")
+	#saver.restore(sess, "/save/baseNewLoss2.ckpt")
 
 	print("training the model")
 	t0 = time.time()
@@ -104,15 +104,16 @@ def main():
 		#accs += acc
 		print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
 		print("cost", score)
-		accuracies = utils.test_f(target_ph.eval(feed_dict), output_flatten.eval(feed_dict))
-		print(accuracies)
+		if i % 10 == 0:
+			accuracies = utils.test_f(target_ph.eval(feed_dict), output_flatten.eval(feed_dict))
+			print("acc", accuracies)
 		'''if i>=0:
 			print(accs / 100.0)
 			print("Episode ", i, " Accuracy: ", acc, " Loss: ", cost, " Score: ", np.mean(score))
 			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	print("saving the model")
-	saver.save(sess, "/save/baseNewLoss2.ckpt")		#save learned weights and biases
+	saver.save(sess, "/save/newModel.ckpt")		#save learned weights and biases
 	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":

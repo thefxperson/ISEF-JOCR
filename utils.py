@@ -4,7 +4,7 @@ import numpy as np
 #the following code has been taken or adapted from hmishra2250's github under the MIT liscence. github link: https://github.com/hmishra2250/NTM-One-Shot-TF
 
 def cosine_similarity(x, y, eps=1e-6):
-	z = tf.matmul(x, tf.transpose(y, perm=[0,2,1]))
+	z = tf.matmul(x, tf.transpose(y, perm=[0,1]))
 	z /= tf.sqrt(tf.multiply(tf.expand_dims(tf.reduce_sum(tf.multiply(x,x), 2), 2), tf.expand_dims(tf.reduce_sum(tf.multiply(y,y), 2), 1)) + eps)
 	return z
 
