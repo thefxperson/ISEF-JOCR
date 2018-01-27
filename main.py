@@ -18,7 +18,7 @@ def main():
 	controller_size = 200
 	memory_shape = (128, 40)
 	num_outputs = 30					#uses five-hot encoding, thus fixed output
-	num_classes = 15
+	num_classes = 5
 	input_size = 20*20
 	batch_size = 10						#microbatches of 10
 	num_episodes = 10000
@@ -79,7 +79,7 @@ def main():
 	#	tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tboard/newModel/")
+	train_writer = tf.summary.FileWriter("/tmp/tboard/newModelFive/")
 
 	sess.run(tf.global_variables_initializer())
 	#saver.restore(sess, "/save/baseNewLoss2.ckpt")
@@ -113,7 +113,7 @@ def main():
 			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	print("saving the model")
-	saver.save(sess, "/save/newModel.ckpt")		#save learned weights and biases
+	saver.save(sess, "/save/newModelFive.ckpt")		#save learned weights and biases
 	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":

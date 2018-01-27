@@ -115,10 +115,7 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		
 		def write_head_addressing(sig_alp, weight_read, weight_least_used):
 			with tf.variable_scope("write_head"):
-				print(weight_read)
-				sig_alp = tf.reshape(sig_alp, [10])
-				print(sig_alp)
-				print((sig_alp * weight_read))
+				sig_alp = tf.reshape(sig_alp, [10, 1])
 				return sig_alp * weight_read + (1. - sig_alp) * weight_least_used #eq22
 		
 		head_param_list = tf.nn.xw_plus_b(hidden_time, weight_alpha, bias_alpha)
@@ -135,7 +132,7 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 				key = tf.tanh(param[:, 0:memory_shape[1]], name="key")	#eq13 i think
 				sigmoid_alpha = tf.sigmoid(param[:, -1:], name="sigmoid_alpha")
 				weight_read = read_head_addressing(key, memory_time1, i)
-				weight_write = write_head_addressing(sigmoid_alpha, weight_read_list1, weight_leastused_time1)
+				weight_write = write_head_addressing(sigmoid_alpha, weight_read_list1[:,i,:], weight_leastused_time1)
 			weight_read_list.append(weight_read)
 			weight_write_list.append(weight_write)
 			key_list.append(key)
@@ -147,13 +144,8 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		#writing
 		with tf.variable_scope("writing"):
 			for i in range(num_reads):
-				'''print(weight_write_list[i])
-				w = tf.expand_dims(weight_write_list[i], axis=2)
-				print(w)
-				print(key_list[i])'''
 				key = tf.expand_dims(key_list[i], axis=1)
-				#memory_time += tf.matmul(w, key)
-				memory_time += tf.matmul(tf.reshape(weight_write_list[0][:, i, :], (batch_size, memory_shape[0], 1)), key)
+				memory_time += tf.matmul(tf.expand_dims(weight_write_list[i], axis=2), key)
 
 		#reading
 		with tf.variable_scope("reading"):
@@ -161,6 +153,8 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 				read_vector_time = tf.reduce_sum(tf.expand_dims(weight_read_list[i], dim=2) * memory_time, axis=1)
 				read_vector_list.append(read_vector_time)
 
+		read_vector_list = tf.reshape(read_vector_list, shape=(batch_size, num_reads*memory_shape[1]))		#convert from list of num_reads tenors to single tensor with all values
+		weight_read_list = tf.reshape(weight_read_list, shape=(batch_size, num_reads, memory_shape[0]))
 		return [memory_time, cell_time, hidden_time, read_vector_list, weight_read_list, usage_weights]
 
 
@@ -216,8 +210,12 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 	list_input = tf.concat([input_var, offset_target], axis=2)
 
 	list_ntm = tf.scan(step, elems=tf.transpose(list_input, perm=[1,0,2]), initializer=[memory, cell_state, hidden_state, read_vector, read_weight_vector, usage_weights], name="Scan_MANN_last")
-	list_ntm_output = tf.transpose(tf.concat(list_ntm[2:3], axis=2), perm=[1,0,2])
+	print(list_ntm[2])
+	print(list_ntm[3])
+	#list_ntm_output = tf.transpose(tf.concat(list_ntm[2:3], axis=2), perm=[1,0,2])
+	list_ntm_output = tf.concat(list_ntm[2:4], axis=2)
 
+	print(list_ntm_output)
 	list_input_weight_output = tf.matmul(tf.reshape(list_ntm_output, shape=(batch_size* sequence_length, -1)), weight_output)
 	output_preactivation = tf.add(tf.reshape(list_input_weight_output, shape=(batch_size, sequence_length, num_outputs)), bias_output)
 	output_flatten = tf.reshape(output_preactivation, output_shape)
