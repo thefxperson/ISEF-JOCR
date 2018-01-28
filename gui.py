@@ -4,14 +4,18 @@ from aqt.qt import *
 import csv
 
 class jocrWindow(QWidget):
-	def __init__(self):
+	def __init__(self, numChars):
 		super(jocrWindow, self).__init__()
 
 		self.setGeometry(300,300,400,400)	#x,y on screen, width and height
 		self.setWindowTitle("jocr")
+		self.canvasList = [MyCanvasPainter() for x in range(numChars)]
+		self.currentWindow = 0
+		self.numChars = numChars
+
+		#------------------GUI----------------
 
 		self.layout = QGridLayout()
-
 
 		self.top3 = QLabel("top 3: A B C")
 		self.layout.addWidget(self.top3,0,1,1,4)
@@ -25,9 +29,8 @@ class jocrWindow(QWidget):
 		self.left.setMinimumHeight(300)
 		self.layout.addWidget(self.left,1,0)
 		
-		self.canvas = MyCanvas()
+		self.canvas = self.currentCanvas()#MyCanvas()
 		self.layout.addWidget(self.canvas,1,1,1,4)
-		self.canvas.selection_shape = "rect"
 
 		self.right = QPushButton("->",self)
 		self.right.setMinimumHeight(300)
@@ -35,7 +38,7 @@ class jocrWindow(QWidget):
 
 		#--------------------------------------
 
-		self.strokes = QLabel(str(self.canvas.stroke))
+		self.strokes = QLabel(str(self.currentWindow))
 		self.layout.addWidget(self.strokes,2,0)
 
 		self.override = QLabel("Override:")
@@ -54,89 +57,113 @@ class jocrWindow(QWidget):
 		self.layout.addWidget(self.undo,2,5)
 
 		#-------------------------------------
-		self.clear.clicked.connect(self.canvas.clearCanvas)
-		self.undo.clicked.connect(self.canvas.undoStroke)
+		self.clear.clicked.connect(self.clearOne)
+		self.undo.clicked.connect(self.undoOne)
+		self.left.clicked.connect(self.leftCan)
+		self.right.clicked.connect(self.rightCan)
 
 		self.layout.setRowStretch(1,1)
 
 		self.setLayout(self.layout)
 
-class MyCanvas(QWidget):
+
+	def currentCanvas(self):
+		return self.canvasList[self.currentWindow]
+
+	def leftCan(self):
+		self.currentWindow -= 1
+		if self.currentWindow < 0:
+			self.currentWindow = self.numChars-1
+		self.updateWindow()
+
+	def rightCan(self):
+		self.currentWindow += 1
+		if self.currentWindow >= self.numChars:
+			self.currentWindow = 0
+		self.updateWindow()
 	
+	def updateWindow(self):
+		self.layout.removeWidget(self.canvas)
+		self.canvas.setParent(None)
+		self.canvas = self.currentCanvas()
+		self.layout.addWidget(self.canvas,1,1,1,4)
+
+		self.layout.removeWidget(self.strokes)
+		self.strokes.setParent(None)
+		self.strokes = QLabel(str(self.currentWindow))
+		self.layout.addWidget(self.strokes,2,0)
+
+	def clearOne(self):
+		canvas = self.currentCanvas()
+		canvas.clearCanvas()
+
+	def undoOne(self):
+		canvas = self.currentCanvas()
+		canvas.undoStroke()
+
+
+
+class MyCanvasPainter(QWidget):
 	def __init__(self):
-		super(MyCanvas, self).__init__()
+		super(MyCanvasPainter, self).__init__()
 
 		self.setFixedSize(315, 315)
 
-		self.selection_shape = 'rect'
-
-		self.selection = False
-
-		self.shapes = []
-
-		self.stroke = 0
-		
-	def paintEvent(self, event):
-
 		self.qp = QPainter()
+		self.strokes = []
 
-		pen = QPen()
-		pen.setColor(QColor(0,255,0))
-		pen.setWidth(5)
-		self.qp.setPen(pen)
-
+	def paintEvent(self, event):
 		self.qp.begin(self)
 
 		self.qp.fillRect(event.rect(), QBrush(QColor(255,255,255)))
+		for i in range(len(self.strokes)):
+			self.qp.drawPath(self.strokes[i])
 
-		for i,j in self.shapes:
-			self.drawRect(event, self.qp, j)
-				
 		self.qp.end()
-		
-	def drawRect(self, event, qp, args):
-		qp.drawRect(args["x"], args["y"], 1, 1)
 
 	def mousePressEvent(self, event):
 		if event.button() == 1:
-			self.stroke += 1
-			self.selection = True
-			self.shapes.append((self.stroke,{"type":"point","x":event.x(),"y":event.y()}))
+			self.moving = True
+			path = QPainterPath()
+			self.strokes.append(path)
+			self.strokes[len(self.strokes)-1].moveTo(event.x(), event.y())
 		self.update()
-			
-	def mouseReleaseEvent(self, event):
-		if event.button() == 1 and self.selection:
-			self.selection = False
-			self.shapes.append((self.stroke,{"type":"point","x":event.x(),"y":event.y()}))
-			
-		self.update()
-
 
 	def mouseMoveEvent(self, event):
-		if self.selection:
-			self.shapes.append((self.stroke,{"type":"point","x":event.x(),"y":event.y()}))
+		if self.moving:
+			self.strokes[len(self.strokes)-1].lineTo(event.x(), event.y())
+		self.update()
+
+	def mouseReleaseEvent(self, event):
+		if event.button() == 1:
+			self.moving = False
+			self.strokes[len(self.strokes)-1].lineTo(event.x(), event.y())
 		self.update()
 
 	def clearCanvas(self):
-		del self.shapes[:]
-		self.stroke = 0
+		self.strokes = []
 		self.update()
 
 	def undoStroke(self):
-		i, j = enumerate(self.shapes)
-		isLeft = False
-		while isLeft == False:
-			for k in len(i):
-				if j[0] == self.stroke:
-					del self.shapes[i]
-			isLeft = True
-			for k in len(i):
-				if j[0] == self.stroke:
-					isLeft = False
+		self.strokes = self.strokes[:-1]
 		self.update()
 
+
 def testShow():
-	mw.dia = dia = jocrWindow()
+	card = mw.col.sched._getCard()
+	if not card:
+		showInfo("deck finished")
+	note = card.note()
+	for (name, value) in note.items():
+		if name == "Vocabulary-Kanji":
+			numCanv = len(value)
+		if name == "Vocabulary-English":
+			eng = value
+	#showInfo(card.q())
+	#showInfo(card.a())
+	showInfo(str(numCanv))
+	showInfo(eng)
+	mw.dia = dia = jocrWindow(numCanv)
 	dia.show()
 	return 0
 
