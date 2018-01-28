@@ -20,7 +20,7 @@ def main():
 	num_outputs = 30					#uses five-hot encoding, thus fixed output
 	num_classes = 5
 	input_size = 20*20
-	batch_size = 10						#microbatches of 10
+	batch_size = 16						#microbatches of 10
 	num_episodes = 10000
 	num_batches = num_episodes/batch_size
 	num_samples_per_class = 10
@@ -60,7 +60,11 @@ def main():
 	print("Output, target shapes: ", output.get_shape().as_list(), target_ph.get_shape().as_list())
 	#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=target_ph), name="cost")
 	eps=1e-8				#make sure you don't take log 0
-	cost = -tf.reduce_mean(tf.reduce_sum(tf.stack(tf.split(target_ph, 6, axis=1) * tf.log(tf.split(output+eps, 6, axis=1)))))
+	#cost = -tf.reduce_mean(tf.reduce_sum(tf.stack(tf.split(target_ph, 6, axis=1) * tf.log(tf.split(output+eps, 6, axis=1)))))
+	print(target_ph)
+	print(output)
+
+	cost = -tf.reduce_mean(tf.reduce_sum(tf.stack(tf.split(tf.reshape(target_ph, shape=(batch_size, num_classes*num_samples_per_class, num_outputs)), 6, axis=2), axis=2) * tf.log(tf.add(tf.reshape(output, shape=(batch_size, num_classes*num_samples_per_class, 6, 5)), eps)), axis=[1, 2, 3]))
 	optimizer = tf.train.RMSPropOptimizer(1e-4, decay=0.95, momentum=0.9)		#minimize loss with RMSProp, learning rate, momentum, and decay from DeepMind's MANN paper
 	#optimizer = tf.train.AdamOptimizer(learning_rate=1e-3)
 	train_step = optimizer.minimize(cost, var_list=params)
@@ -79,7 +83,7 @@ def main():
 	#	tf.summary.scalar("accuracy-"+str(i*5), accuracies[i])
 
 	merged = tf.summary.merge_all()
-	train_writer = tf.summary.FileWriter("/tmp/tboard/newModelFive/")
+	train_writer = tf.summary.FileWriter("/tmp/tboard/newModelFive1/")
 
 	sess.run(tf.global_variables_initializer())
 	#saver.restore(sess, "/save/baseNewLoss2.ckpt")
@@ -88,6 +92,7 @@ def main():
 	t0 = time.time()
 
 	for i, (batch_input, batch_output, inst) in generator:
+		print("b")
 		feed_dict = {
 			input_ph: batch_input,
 			target_ph: batch_output,
@@ -96,15 +101,17 @@ def main():
 
 		train_step.run(feed_dict)
 		score = cost.eval(feed_dict)
+		print(target_ph.eval(feed_dict))
+		print(out.eval())
 
 		#acc = accuracies.eval(feed_dict)
 
 		summary = merged.eval(feed_dict)
 		train_writer.add_summary(summary, i)
 		#accs += acc
-		print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
-		print("cost", score)
-		if i % 10 == 0:
+		if i % 100 == 0:
+			print("batch", i+1, "out of", num_batches, "time", time.time()-t0)
+			print("cost", score)
 			accuracies = utils.test_f(target_ph.eval(feed_dict), output_flatten.eval(feed_dict))
 			print("acc", accuracies)
 		'''if i>=0:
@@ -113,7 +120,7 @@ def main():
 			scores, accs = [], np.zeros(generator.num_samples_per_class)'''
 
 	print("saving the model")
-	saver.save(sess, "/save/newModelFive.ckpt")		#save learned weights and biases
+	saver.save(sess, "/save/newModelFive1.ckpt")		#save learned weights and biases
 	train_writer.add_graph(sess.graph)		#save graph values (loss, acc)
 
 if __name__ == "__main__":

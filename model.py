@@ -7,6 +7,7 @@ import utils
 def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40), controller_size=200, input_size=20*20, num_reads=4, num_samples_per_class=10, num_classes=5):
 	#input dims (batch_size, time, input_dim)
 	#target dims (batch_size, time)(label_indicies)
+	print("c")
 	input_var = tf.reshape(input_var, [batch_size, num_classes*num_samples_per_class, 400])
 	target = tf.reshape(target, [batch_size, num_classes*num_samples_per_class, num_outputs])
 
@@ -81,6 +82,8 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 
 		#lstm
 		#input_concat = tf.concat([input_time, read_vector_list1], axis=1)
+		#cont = tf.nn.rnn_cell.BasicLSTMCell(200)
+		#hidden_time, cell_time = cont(input_time, cell_time1)
 		preactivations = tf.matmul(input_time, weight_inputhidden) + tf.matmul(read_vector_list1, weight_readhidden) + tf.matmul(hidden_time1, weight_hiddenhidden) + bias_inputhidden		#input gate, forget gate, and output gate before they go through activation function
 		forget_gate, input_gate, output_gate, inputtMod_gate = slice_equally(preactivations, controller_size, 4)
 		#run values through activation functions
@@ -91,6 +94,8 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		#update states
 		cell_time = forget_gate * cell_time1 + input_gate * inputtMod_gate	#update cell state
 		hidden_time = output_gate * tf.tanh(cell_time)						#update hidden state
+
+
 
 
 		#MANN
@@ -115,7 +120,7 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 		
 		def write_head_addressing(sig_alp, weight_read, weight_least_used):
 			with tf.variable_scope("write_head"):
-				sig_alp = tf.reshape(sig_alp, [10, 1])
+				sig_alp = tf.reshape(sig_alp, [batch_size, 1])
 				return sig_alp * weight_read + (1. - sig_alp) * weight_least_used #eq22
 		
 		head_param_list = tf.nn.xw_plus_b(hidden_time, weight_alpha, bias_alpha)
@@ -210,12 +215,9 @@ def MANN(input_var, target, batch_size=10, num_outputs=30, memory_shape=(128,40)
 	list_input = tf.concat([input_var, offset_target], axis=2)
 
 	list_ntm = tf.scan(step, elems=tf.transpose(list_input, perm=[1,0,2]), initializer=[memory, cell_state, hidden_state, read_vector, read_weight_vector, usage_weights], name="Scan_MANN_last")
-	print(list_ntm[2])
-	print(list_ntm[3])
 	#list_ntm_output = tf.transpose(tf.concat(list_ntm[2:3], axis=2), perm=[1,0,2])
 	list_ntm_output = tf.concat(list_ntm[2:4], axis=2)
 
-	print(list_ntm_output)
 	list_input_weight_output = tf.matmul(tf.reshape(list_ntm_output, shape=(batch_size* sequence_length, -1)), weight_output)
 	output_preactivation = tf.add(tf.reshape(list_input_weight_output, shape=(batch_size, sequence_length, num_outputs)), bias_output)
 	output_flatten = tf.reshape(output_preactivation, output_shape)
