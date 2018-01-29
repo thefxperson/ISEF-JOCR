@@ -14,6 +14,7 @@ Improving Optical Character Recognition (OCR) of Japanese characters through con
 
 ## Citations
 Some code has been taken or adapted from hmishra2250's github under the MIT License. [[Github](https://github.com/hmishra2250/NTM-One-Shot-TF)]
+The Memory Augmented Neural Network was taken and slightly modified from snowkylin's github under the LGPL-3.0 License [[Github](https://github.com/snowkylin/ntm)]
 
 Memory Augmented Neural Network based on the following paper:
 Adam Santoro, Sergey Bartunov, Matthew Botvinick, Daan Wierstra, Timothy Lillicrap, *One-shot Learning with Memory-Augmented Neural Networks*, [[arXiv](http://arxiv.org/abs/1605.06065)]
