@@ -31,8 +31,8 @@ def main():
     parser.add_argument('--test_batch_num', default=100)
     parser.add_argument('--n_train_classes', default=1200)
     parser.add_argument('--n_test_classes', default=423)
-    parser.add_argument('--save_dir', default='./save/one_shot_learning')
-    parser.add_argument('--tensorboard_dir', default='./summary/one_shot_learning')
+    parser.add_argument('--save_dir', default='/save/one_shot_learning')
+    parser.add_argument('--tensorboard_dir', default='/summary/one_shot_learning')
     args = parser.parse_args()
     if args.mode == 'train':
         train(args)
@@ -84,7 +84,7 @@ def train(args):
             # Save model
 
             if b % 5000 == 0 and b > 0:
-                saver.save(sess, args.save_dir + '/' + args.model + '/model.tfmodel', global_step=b)
+                saver.save(sess, args.save_dir + '/' + args.model + '/model.ckpt', global_step=b)
 
             # Train
 
@@ -95,7 +95,8 @@ def train(args):
             feed_dict = {model.x_image: x_image, model.x_label: x_label, model.y: y}
             sess.run(model.train_op, feed_dict=feed_dict)
 
-        saver.save(sess, args.save_dir + '/' + args.model + '/model.tfmodel', global_step=b)
+        saver.save(sess, args.save_dir + '/' + args.model + '/model.ckpt', global_step=b)
+        train_writer.add_graph(sess.graph)
 
 
 def test(args):
