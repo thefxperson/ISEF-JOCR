@@ -1,6 +1,5 @@
 # ISEF-JOCR
-Improving Optical Character Recognition (OCR) of Japanese characters through context aware machine learning.
-
+Improving Optical Character Recognition (OCR) of Japanese characters through one-shot learning and a context-aware system.
 ## Results
 #### 11/11 MNIST - Maximum Likelihood Estimation - 11.35% accuracy
 
@@ -11,6 +10,10 @@ Improving Optical Character Recognition (OCR) of Japanese characters through con
 #### 11/21 MNIST - LSTM (built in TensorFlow) - 98.55% accuracy
 
 200 hidden units - 6 epochs | 49.5s build time
+
+#### 02/14 Omniglot - MANN (LSTM Controller, 5-hot encoding) - ~50-70% 10th Accuracy
+
+200 hidden units - 1.6m episodes | a long time
 
 ## Citations
 Some code has been taken or adapted from hmishra2250's github under the MIT License. [[Github](https://github.com/hmishra2250/NTM-One-Shot-TF)]
