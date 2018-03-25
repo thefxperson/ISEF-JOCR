@@ -1,7 +1,6 @@
 from aqt import mw
 from aqt.utils import showInfo
 from aqt.qt import *
-import csv
 
 class jocrWindow(QWidget):
 	def __init__(self, numChars):
@@ -13,9 +12,13 @@ class jocrWindow(QWidget):
 		self.currentWindow = 0
 		self.numChars = numChars
 
+
 		#------------------GUI----------------
 
 		self.layout = QGridLayout()
+
+		self.saver = QPushButton("Evaluate")
+		self.layout.addWidget(self.saver, 0, 0)
 
 		self.top3 = QLabel("top 3: A B C")
 		self.layout.addWidget(self.top3,0,1,1,4)
@@ -61,6 +64,7 @@ class jocrWindow(QWidget):
 		self.undo.clicked.connect(self.undoOne)
 		self.left.clicked.connect(self.leftCan)
 		self.right.clicked.connect(self.rightCan)
+		self.saver.clicked.connect(self.eval)
 
 		self.layout.setRowStretch(1,1)
 
@@ -101,6 +105,18 @@ class jocrWindow(QWidget):
 		canvas = self.currentCanvas()
 		canvas.undoStroke()
 
+	def eval(self):
+		cwd = os.getcwd()
+		path = cwd + "/nn/"
+		if not os.path.exists(path):
+			os.makedirs(path)
+		canvas = self.currentCanvas()
+		p = QPixmap.grabWindow(canvas.winId())
+		if self.currentWindow < 10:
+			t = "0" + str(self.currentWindow)
+		else:
+			t = str(self.currentWindow)
+		p.save(path+"img"+t+".jpg", "jpg")
 
 
 class MyCanvasPainter(QWidget):
@@ -150,7 +166,7 @@ class MyCanvasPainter(QWidget):
 
 
 def testShow():
-	card = mw.col.sched._getCard()
+	'''card = mw.col.sched._getCard()
 	if not card:
 		showInfo("deck finished")
 	note = card.note()
@@ -158,14 +174,23 @@ def testShow():
 		if name == "Vocabulary-Kanji":
 			numCanv = len(value)
 		if name == "Vocabulary-English":
-			eng = value
+			eng = value'''
 	#showInfo(card.q())
 	#showInfo(card.a())
-	showInfo(str(numCanv))
-	showInfo(eng)
-	mw.dia = dia = jocrWindow(numCanv)
+	#showInfo(str(numCanv))
+	#showInfo(eng)
+	mw.dia = dia = jocrWindow(14)
 	dia.show()
 	return 0
+
+def create():
+	showInfo("called")
+	#new item called test
+	action = QAction("JOCR",mw)
+	#when activated run testopen
+	action.triggered.connect(lambda: testShow())
+	#add test to the Tools menu in Anki
+	mw.form.menuTools.addAction(action)
 
 #new item called test
 action = QAction("JOCR",mw)

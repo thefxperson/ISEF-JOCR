@@ -8,21 +8,25 @@ import argparse
 import numpy as np
 from model import NTMOneShotLearningModel
 from tensorflow.python import debug as tf_debug
+import output_utils
+import os
+from PIL import Image
+from PIL import ImageOps
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', default="train")
+    parser.add_argument('--mode', default="eval")
     parser.add_argument('--restore_training', default=False)
     parser.add_argument('--debug', default=False)
     parser.add_argument('--label_type', default="five_hot")
-    parser.add_argument('--n_classes', default=15)
-    parser.add_argument('--seq_length', default=150)
+    parser.add_argument('--n_classes', default=14)
+    parser.add_argument('--seq_length', default=14)
     parser.add_argument('--augment', default=True)
     parser.add_argument('--model', default="MANN", help='LSTM, MANN, MANN2 or NTM')
     parser.add_argument('--read_head_num', default=4)
-    parser.add_argument('--batch_size', default=16)
-    parser.add_argument('--num_epoches', default=100000)
+    parser.add_argument('--batch_size', default=2)
+    parser.add_argument('--num_epoches', default=1000)
     parser.add_argument('--learning_rate', default=1e-3)
     parser.add_argument('--rnn_size', default=200)
     parser.add_argument('--image_width', default=20)
@@ -32,7 +36,7 @@ def main():
     parser.add_argument('--memory_vector_dim', default=40)
     parser.add_argument('--shift_range', default=1, help='Only for model=NTM')
     parser.add_argument('--write_head_num', default=1, help='Only for model=NTM. For MANN #(write_head) = #(read_head)')
-    parser.add_argument('--test_batch_num', default=100)
+    parser.add_argument('--test_batch_num', default=1)
     parser.add_argument('--n_train_classes', default=1200)
     parser.add_argument('--n_test_classes', default=423)
     parser.add_argument('--save_dir', default='/save/one_shot_learning')
@@ -42,6 +46,8 @@ def main():
         train(args)
     elif args.mode == 'test':
         test(args)
+    elif args.mode == "eval":
+    	eval(args)
 
 
 def train(args):
@@ -105,6 +111,7 @@ def train(args):
 
 def test(args):
     model = NTMOneShotLearningModel(args)
+    print("model loaded")
     data_loader = OmniglotDataLoader(
         image_size=(args.image_width, args.image_height),
         n_train_classses=args.n_train_classes,
@@ -112,26 +119,68 @@ def test(args):
     )
     saver = tf.train.Saver()
     ckpt = tf.train.get_checkpoint_state(args.save_dir + '/' + args.model)
+    print("saver created")
     with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("Test Result\n1st\t2nd\t3rd\t4th\t5th\t6th\t7th\t8th\t9th\t10th\tloss")
-        y_list = []
-        output_list = []
-        loss_list = []
         for b in range(args.test_batch_num):
             x_image, x_label, y = data_loader.fetch_batch(args.n_classes, args.batch_size, args.seq_length,
                                                           type='test',
                                                           augment=args.augment,
                                                           label_type="five_hot")
-            feed_dict = {model.x_image: x_image, model.x_label: x_label, model.y: y}
-            output, learning_loss = sess.run([model.o, model.learning_loss], feed_dict=feed_dict)
-            y_list.append(y)
-            output_list.append(output)
-            loss_list.append(learning_loss)
-        accuracy = test_f(args, np.concatenate(y_list, axis=0), np.concatenate(output_list, axis=0))
-        for accu in accuracy:
-            print('%.4f' % accu, end='\t')
-        print(np.mean(loss_list))
+            #print(x_image)
+            feed_dict = {model.x_image: x_image, model.x_label: x_label}
+            output, state = sess.run([model.o,model.state_list], feed_dict=feed_dict)
+
+        print("saving")
+        saver.save(sess, args.save_dir + '/' + args.model + '/memsave/modelTrained.ckpt')
+        np.save("chars/test.npy", state[-1])
+        print("saved")
+
+def eval(args):
+    print("eval")
+    model = NTMOneShotLearningModel(args)
+    saver = tf.train.Saver()
+    ckpt = tf.train.get_checkpoint_state(args.save_dir + '/' + args.model + "/memsave")
+    with tf.Session() as sess:
+        saver.restore(sess, ckpt.model_checkpoint_path)
+        print("restored")
+        #load images from anki
+        imgs = []
+        x = []
+        for direc, subdir, file in os.walk("evaluation/"):
+            imgs.append([Image.open(direc + filename).copy() for filename in file])
+
+        for i in range(len(imgs[0])):
+            image = ImageOps.invert(imgs[0][i].convert('L')).resize((20,20))
+            np_image = np.reshape(np.array(image, dtype=np.float32),newshape=(20 * 20))
+            max_value = np.max(np_image)    # normalization is important
+            if max_value > 0.:
+                np_image = np_image / max_value
+            x.append(np_image)
+        x = [x, x]
+        #create predefined target list, xinput shifted
+        fooDict = np.load("chars/kanji_list.npy").item()
+        xlab = [fooDict["あ"], fooDict["お"], fooDict["か"],fooDict["シ"],fooDict["ソ"],fooDict["ツ"],fooDict["ン"],fooDict["日"],fooDict["月"],fooDict["目"],fooDict["耳"],fooDict["人"],fooDict["火"],fooDict["入"]]
+        keys = ["あ","お","か","シ","ソ","ツ","ン","day", "month", "eye", "ear", "person", '"fire"', "enter"]
+        xlab = xlab[1:] + [xlab[0]]
+        xlab = [xlab, xlab]
+        #get outputs
+        feed_dict = {model.x_image: x, model.x_label: xlab}
+        out = sess.run(model.o, feed_dict=feed_dict)
+        #get top 3 predictions from jisho, do the thing with the output, and print
+        outDict = np.load("chars/output_list.npy").item()
+        for i in range(out.shape[1]):
+            print(i)
+            for j in range(1,4):
+                key = output_utils.combineOut(out[0,i,:], output_utils.getContext(keys[i], 75, j))
+                #key = output_utils.combineOut(output_utils.getContext(keys[i], 1, j), output_utils.getContext(keys[i], 1, j))
+
+                if key in outDict:
+                    print(outDict[key])
+                else:
+                    print(key)
 
 
 def test_f(args, y, output):
