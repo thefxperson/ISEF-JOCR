@@ -4,9 +4,10 @@
 
 import tensorflow as tf
 import numpy as np
+from pyflann import *
 
 class MANNCell():
-    def __init__(self, rnn_size, memory_size, memory_vector_dim, head_num, gamma=0.95,
+    def __init__(self, rnn_size, memory_size, memory_vector_dim, head_num, sparse_K, gamma=0.95,
                  reuse=False, k_strategy='separate'):
         self.rnn_size = rnn_size
         self.memory_size = memory_size
@@ -17,6 +18,7 @@ class MANNCell():
         self.step = 0
         self.gamma = gamma
         self.k_strategy = k_strategy
+        self.ANN_K = sparse_K
 
     def __call__(self, x, prev_state):
         prev_read_vector_list = prev_state['read_vector_list']      # read vector (the content that is read out, length = memory_vector_dim)
@@ -50,13 +52,14 @@ class MANNCell():
 
         prev_w_r_list = prev_state['w_r_list']      # vector of weightings (blurred address) over locations
         prev_M = prev_state['M']
+        prev_ANN = prev_state['ANN']
         prev_w_u = prev_state['w_u']
         prev_indices, prev_w_lu = self.least_used(prev_w_u)
         w_r_list = []
         w_w_list = []
         k_list = []
         a_list = []
-        # p_list = []   # For debugging
+        # calculate read and write weights
         for i, head_parameter in enumerate(head_parameter_list):
             with tf.variable_scope('addressing_head_%d' % i):
                 k = tf.tanh(head_parameter[:, 0:self.memory_vector_dim], name='k')
@@ -70,7 +73,6 @@ class MANNCell():
             k_list.append(k)
             if self.k_strategy == 'separate':
                 a_list.append(a)
-            # p_list.append({'k': k, 'sig_alpha': sig_alpha, 'a': a})   # For debugging
 
         w_u = self.gamma * prev_w_u + tf.add_n(w_r_list) + tf.add_n(w_w_list)   # eq (20)
 
@@ -95,7 +97,7 @@ class MANNCell():
         read_vector_list = []
         with tf.variable_scope('reading'):
             for i in range(self.head_num):
-                read_vector = tf.reduce_sum(tf.expand_dims(w_r_list[i], dim=2) * M, axis=1)
+                read_vector = tf.reduce_sum(tf.expand_dims(w_r_list[i], dim=2) * M, axis=1) #weighted sum of read weights times memory SAM eq (4)
                 read_vector_list.append(read_vector)
 
         # controller_output -> NTM output
@@ -122,12 +124,10 @@ class MANNCell():
             k_norm = tf.sqrt(tf.reduce_sum(tf.square(k), axis=1, keep_dims=True))
             M_norm = tf.sqrt(tf.reduce_sum(tf.square(prev_M), axis=2, keep_dims=True))
             norm_product = M_norm * k_norm
-            K = tf.squeeze(inner_product / (norm_product + 1e-8))                   # eq (17)
-
-            # Calculating w^c
+            K = tf.squeeze(inner_product / (norm_product + 1e-8))                   # MANN eq (17)
 
             K_exp = tf.exp(K)
-            w = K_exp / tf.reduce_sum(K_exp, axis=1, keep_dims=True)                # eq (18)
+            w = K_exp / tf.reduce_sum(K_exp, axis=1, keep_dims=True)                # MANN eq (18)
 
             return w
 
@@ -147,6 +147,8 @@ class MANNCell():
         one_hot_weight_vector = np.zeros([batch_size, self.memory_size])
         one_hot_weight_vector[..., 0] = 1
         one_hot_weight_vector = tf.constant(one_hot_weight_vector, dtype=tf.float32)
+        flann = FLANN()
+        flann.build_index([np.ones([batch_size, self.memory_size, self.memory_vector_dim]) * 1e-6], algorithm="kmeans", branching=32, iterations=7, checks=16)
         with tf.variable_scope('init', reuse=self.reuse):
             state = {
                 'controller_state': self.controller.zero_state(batch_size, dtype),
@@ -154,6 +156,7 @@ class MANNCell():
                                      for _ in range(self.head_num)],
                 'w_r_list': [one_hot_weight_vector for _ in range(self.head_num)],
                 'w_u': one_hot_weight_vector,
-                'M': tf.constant(np.ones([batch_size, self.memory_size, self.memory_vector_dim]) * 1e-6, dtype=tf.float32)
+                'M': tf.constant(np.ones([batch_size, self.memory_size, self.memory_vector_dim]) * 1e-6, dtype=tf.float32),
+                'ANN': flann
             }
             return state

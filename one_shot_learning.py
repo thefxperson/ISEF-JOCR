@@ -22,23 +22,20 @@ def main():
     parser.add_argument('--label_type', default="five_hot")
     parser.add_argument('--n_classes', default=14)
     parser.add_argument('--seq_length', default=14)
-    parser.add_argument('--augment', default=True)
-    parser.add_argument('--model', default="MANN", help='LSTM, MANN, MANN2 or NTM')
     parser.add_argument('--read_head_num', default=4)
-    parser.add_argument('--batch_size', default=2)
+    parser.add_argument('--batch_size', default=8)
     parser.add_argument('--num_epoches', default=1000)
-    parser.add_argument('--learning_rate', default=1e-3)
-    parser.add_argument('--rnn_size', default=200)
+    parser.add_argument('--learning_rate', default=1e-5)
+    parser.add_argument('--rnn_size', default=100)
     parser.add_argument('--image_width', default=20)
     parser.add_argument('--image_height', default=20)
     parser.add_argument('--rnn_num_layers', default=1)
     parser.add_argument('--memory_size', default=128)
     parser.add_argument('--memory_vector_dim', default=40)
-    parser.add_argument('--shift_range', default=1, help='Only for model=NTM')
-    parser.add_argument('--write_head_num', default=1, help='Only for model=NTM. For MANN #(write_head) = #(read_head)')
     parser.add_argument('--test_batch_num', default=1)
     parser.add_argument('--n_train_classes', default=1200)
     parser.add_argument('--n_test_classes', default=423)
+    parser.add_argument('--sparse_K', default=4)
     parser.add_argument('--save_dir', default='/save/one_shot_learning')
     parser.add_argument('--tensorboard_dir', default='/summary/one_shot_learning')
     args = parser.parse_args()
@@ -62,12 +59,12 @@ def train(args):
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
         if args.restore_training:
             saver = tf.train.Saver()
-            ckpt = tf.train.get_checkpoint_state(args.save_dir + '/' + args.model)
+            ckpt = tf.train.get_checkpoint_state(args.save_dir + '/SAM')
             saver.restore(sess, ckpt.model_checkpoint_path)
         else:
             saver = tf.train.Saver(tf.global_variables())
             tf.global_variables_initializer().run()
-        train_writer = tf.summary.FileWriter(args.tensorboard_dir + '/' + args.model, sess.graph)
+        train_writer = tf.summary.FileWriter(args.tensorboard_dir + '/SAM', sess.graph)
         #print(args)
         print("1st\t2nd\t3rd\t4th\t5th\t6th\t7th\t8th\t9th\t10th\tbatch\tloss")
         for b in range(args.num_epoches):
@@ -94,7 +91,7 @@ def train(args):
             # Save model
 
             if b % 5000 == 0 and b > 0:
-                saver.save(sess, args.save_dir + '/' + args.model + '/model.ckpt', global_step=b)
+                saver.save(sess, args.save_dir + '/SAM/model.ckpt', global_step=b)
 
             # Train
 
@@ -105,7 +102,7 @@ def train(args):
             feed_dict = {model.x_image: x_image, model.x_label: x_label, model.y: y}
             sess.run(model.train_op, feed_dict=feed_dict)
 
-        saver.save(sess, args.save_dir + '/' + args.model + '/model.ckpt', global_step=b)
+        saver.save(sess, args.save_dir + '/SAM/model.ckpt', global_step=b)
         train_writer.add_graph(sess.graph)
 
 
@@ -118,7 +115,7 @@ def test(args):
         n_test_classes=args.n_test_classes
     )
     saver = tf.train.Saver()
-    ckpt = tf.train.get_checkpoint_state(args.save_dir + '/' + args.model)
+    ckpt = tf.train.get_checkpoint_state(args.save_dir + '/SAM')
     print("saver created")
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -134,7 +131,7 @@ def test(args):
             output, state = sess.run([model.o,model.state_list], feed_dict=feed_dict)
 
         print("saving")
-        saver.save(sess, args.save_dir + '/' + args.model + '/memsave/modelTrained.ckpt')
+        saver.save(sess, args.save_dir + '/SAM/memsave/modelTrained.ckpt')
         np.save("chars/test.npy", state[-1])
         print("saved")
 
@@ -142,7 +139,7 @@ def eval(args):
     print("eval")
     model = NTMOneShotLearningModel(args)
     saver = tf.train.Saver()
-    ckpt = tf.train.get_checkpoint_state(args.save_dir + '/' + args.model + "/memsave")
+    ckpt = tf.train.get_checkpoint_state(args.save_dir + '/SAM/memsave')
     with tf.Session() as sess:
         saver.restore(sess, ckpt.model_checkpoint_path)
         print("restored")
