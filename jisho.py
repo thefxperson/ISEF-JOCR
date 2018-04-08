@@ -90,3 +90,11 @@ class jisho:
 		self.japanese_reading.clear()
 		self.english_definition.clear()
 		self.is_common.clear()
+
+jisho = jisho()
+
+jisho.search("eye")
+foo = (0,0)
+print(jisho.japanese_word[foo])
+print(jisho.is_common[0])
+print(jisho.getWord(0))

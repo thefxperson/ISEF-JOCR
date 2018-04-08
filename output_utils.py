@@ -29,20 +29,20 @@ def getContext(term, weight, freq):
 	kandict = np.load("chars/kanji_list.npy").item()
 
 	if term in kana:
-		#print(term)
-		#print(kandict[term])
-		sumvec += (.5 * kandict[term])		#.5 (if you search "a", you would get hiragana a, and katakana a, so 1/2)
+		sumvec += (.25 * kandict[term])		#.5 (if you search "a", you would get hiragana a, and katakana a, so 1/2) --tuned down to .25 since it was too much
 	else:
 		#search the item on jisho and process the return
 		foo = jisho.jisho()
 		foo.search(term)
 		s = ""
+		common = {}
 		for i in range(foo.num_entries):
 			if i <= 5:
 				word = foo.getWord(i)
 				for j in range(foo.num_jp_entries):
 					if word[j] != None:
 						s += word[j]
+						common[word[j]] = foo.is_common[i]
 
 		#get frequency for every character
 		classcount = {}
@@ -53,17 +53,15 @@ def getContext(term, weight, freq):
 				classcount[i] += 1
 
 		sort = sorted(classcount, key=classcount.get)
-		#print(classcount)
-		#print(sort)
+
 		#compute vector of sum of percents
 		pct = classcount[sort[-freq]]/len(s)
 		if sort[-freq] in kandict:
-			sumvec += (pct * kandict[sort[-freq]])
-		#print(sort[-freq])
-	#sumvec = np.split(sumvec, 6)
-	#sumvec = softmax(sumvec)
-	#sumvec = sumvec * weight
-	#return np.reshape(sumvec, 30)
+			if common[sort[-freq]]:						#common words are worth 2.5 times as much as uncommon words
+				sumvec += 2.5 * (pct * kandict[sort[-freq]])
+			else:
+				sumvec += (pct * kandict[sort[-freq]])
+
 	return sumvec * weight
 
 def combineOut(output, context):	#combine NN output with context output, return label
